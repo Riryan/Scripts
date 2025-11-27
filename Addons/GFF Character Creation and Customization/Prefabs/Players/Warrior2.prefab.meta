@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: e1a994bd12c128c4fafd5f94c0d0d4d6
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 169123
+  packageName: Character Creation and Customization for uMMORPG Remastered
+  packageVersion: 1.6
+  assetPath: Assets/uMMORPG/Scripts/Addons/GFF Character Creation and Customization/Prefabs/Players/Warrior.prefab
+  uploadId: 657161

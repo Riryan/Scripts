@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: a85da53b8b557e04fb7062b34c1c646d
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 169123
+  packageName: Character Creation and Customization for uMMORPG Remastered
+  packageVersion: 1.6
+  assetPath: Assets/uMMORPG/Scripts/Addons/GFF Character Creation and Customization/Materials
+    for Archer/Skin/vis2k_Ga_Skin_Body_ranger.000.mat
+  uploadId: 657161

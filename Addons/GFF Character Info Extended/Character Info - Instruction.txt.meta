@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: ed772911cade73d4dbab322de2a52e18
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 166386
+  packageName: Passive combat skills for uMMORPG Remastered
+  packageVersion: 1.7
+  assetPath: Assets/uMMORPG/Scripts/Addons/GFF Character Info Extended/Character
+    Info - Instruction.txt
+  uploadId: 724751

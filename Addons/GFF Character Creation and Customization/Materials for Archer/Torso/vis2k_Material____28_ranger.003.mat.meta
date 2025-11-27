@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: e63359bb3afae6944872166fe827422e
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 169123
+  packageName: Character Creation and Customization for uMMORPG Remastered
+  packageVersion: 1.6
+  assetPath: Assets/uMMORPG/Scripts/Addons/GFF Character Creation and Customization/Materials
+    for Archer/Torso/vis2k_Material____28_ranger.003.mat
+  uploadId: 657161

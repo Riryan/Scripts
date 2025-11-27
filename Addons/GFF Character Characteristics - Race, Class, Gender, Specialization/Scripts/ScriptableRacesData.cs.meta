@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 88117f54e8369aa42b38c092e50c0069
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 169123
+  packageName: Character Creation and Customization for uMMORPG Remastered
+  packageVersion: 1.6
+  assetPath: Assets/uMMORPG/Scripts/Addons/GFF Character Characteristics - Race,
+    Class, Gender, Specialization/Scripts/ScriptableRacesData.cs
+  uploadId: 657161

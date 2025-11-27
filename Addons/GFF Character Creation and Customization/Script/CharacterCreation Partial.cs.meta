@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 6e131fa820ee33b44bdfadf5f5b08c76
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 169123
+  packageName: Character Creation and Customization for uMMORPG Remastered
+  packageVersion: 1.6
+  assetPath: Assets/uMMORPG/Scripts/Addons/GFF Character Creation and Customization/Script/CharacterCreation
+    Partial.cs
+  uploadId: 657161

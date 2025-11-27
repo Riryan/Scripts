@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: d46db416e5c625d45918c67c7b52ba60
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 166386
+  packageName: Passive combat skills for uMMORPG Remastered
+  packageVersion: 1.7
+  assetPath: Assets/uMMORPG/Scripts/Addons/GFF Character Info Extended/Prefabs/AttributeSlot.prefab
+  uploadId: 724751

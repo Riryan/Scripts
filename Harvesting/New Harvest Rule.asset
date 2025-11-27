@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0aa4bd13fd7c6e4b943f1ca3a9dd7c3, type: 3}
+  m_Name: New Harvest Rule
+  m_EditorClassIdentifier: 
+  PrototypeId: 1
+  averageCountPerCell: 70
+  minSpacing: 3
+  respawnSecondsRange: {x: 3, y: 60}
+  prefabWhole: {fileID: 2399890491947666229, guid: 890347f922e3add46a5cee6ef9e207c0,
+    type: 3}
+  prefabStump: {fileID: 7156535114924003964, guid: d0a7edde1925b4840a6088ba5ab98c66,
+    type: 3}

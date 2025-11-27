@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: b1b958b58667dd842a46438a81c9c22f
+timeCreated: 1495473205
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 169123
+  packageName: Character Creation and Customization for uMMORPG Remastered
+  packageVersion: 1.6
+  assetPath: Assets/uMMORPG/Scripts/Addons/GFF Character Creation and Customization/Materials
+    for Warrior/Skin/male_warrior_body 3.mat
+  uploadId: 657161

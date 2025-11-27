@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 84fd69959ada25644907b334f400051f
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 169123
+  packageName: Character Creation and Customization for uMMORPG Remastered
+  packageVersion: 1.6
+  assetPath: Assets/uMMORPG/Scripts/Addons/GFF Character Creation and Customization/Prefabs/GFF
+    CharacterCreationExtendedPositions.prefab
+  uploadId: 657161

@@ -1,0 +1,2 @@
+﻿
+public class NpcSkills : Skills {}

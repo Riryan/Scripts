@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: a550f52d3fc9a734198acc7fcf964f1a
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 166386
+  packageName: Passive combat skills for uMMORPG Remastered
+  packageVersion: 1.7
+  assetPath: Assets/uMMORPG/Scripts/Addons/GFF Character Info Extended/Prefabs/CraftingSkillSlot.prefab
+  uploadId: 724751

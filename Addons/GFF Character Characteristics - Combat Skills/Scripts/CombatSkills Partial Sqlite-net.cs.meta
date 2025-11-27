@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 7a4ef6c19b73e0f49918c499a471960b
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 166386
+  packageName: Passive combat skills for uMMORPG Remastered
+  packageVersion: 1.7
+  assetPath: Assets/uMMORPG/Scripts/Addons/GFF Character Characteristics - Combat
+    Skills/Scripts/CombatSkills Partial Sqlite-net.cs
+  uploadId: 724751

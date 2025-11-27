@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: c48dd346b2d761d44a89d6fa511be25f
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 166386
+  packageName: Passive combat skills for uMMORPG Remastered
+  packageVersion: 1.7
+  assetPath: Assets/uMMORPG/Scripts/Addons/GFF Character Info Extended/Prefabs/GatheringSkillSlot.prefab
+  uploadId: 724751

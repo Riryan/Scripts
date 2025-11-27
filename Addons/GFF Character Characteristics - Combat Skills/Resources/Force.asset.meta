@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 45a7ff1160be4644e8a64f82ad3f95b6
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 166386
+  packageName: Passive combat skills for uMMORPG Remastered
+  packageVersion: 1.7
+  assetPath: Assets/uMMORPG/Scripts/Addons/GFF Character Characteristics - Combat
+    Skills/Resources/Force.asset
+  uploadId: 724751

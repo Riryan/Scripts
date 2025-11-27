@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2c18fc1979938f4ba6b62fa353b1870, type: 3}
+  m_Name: DatabaseCleaner
+  m_EditorClassIdentifier: 
+  isActive: 1
+  PruneInactiveAfterDays: 1
+  PruneBannedAfterDays: 1
+  PruneEmptyAccounts: 1
+  PruneEmptyAccountsAfterDays: 1
+  characterTables:
+  - character_inventory
+  - character_equipment
+  - character_skills
+  - character_combatSkills
+  - character_customization
+  accountTables: []
+  AutoDiscoverCharacterTables: 1
+  DefaultCharacterTables:
+  - character_inventory
+  - character_equipment
+  - character_skills
+  - character_combatSkills
+  - character_customization

@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: bda86bb146b45ae408e12517b727d8fc
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 169123
+  packageName: Character Creation and Customization for uMMORPG Remastered
+  packageVersion: 1.6
+  assetPath: Assets/uMMORPG/Scripts/Addons/GFF Character Creation and Customization/Materials
+    for Archer/hair/vis2k_High_polytail_ranger.000.mat
+  uploadId: 657161

@@ -1,0 +1,108 @@
+Thank you for your purchase. 
+Our other projects you can see https://assetstore.unity.com/publishers/37837
+We are waiting for your feedback on asset store
+Best wishes the development team GFF
+Support us on patreon  https://www.patreon.com/GameFunSPB
+Contacts : email "GameFunSPB@gmail.com"; Discord  "GameFunSPB#2037"
+
+
+Addon name : Character Creation and Customization
+Addon version : 1.6
+Date of creation / editing 14.04.2024
+Require Components : Race, Class, Gender, Specialization; Character Selection Extended; Addons Core (EventsPartial)
+Recommended Components : none
+Compatible projects : uMMORPG Remastered 2.41
+Recommendations : Test the addon on a clean version uMMORPG Remastered without changes.
+Link : http://u3d.as/1Tcu
+
+
+Versions for other projects:
+ * uMMORPG Classic : http://u3d.as/1vyq
+
+
+All Addons for uMMORPG Classic http://u3d.as/25bQ
+All Addons for uMMORPG Remastered : https://u3d.as/2AEs
+All Addons for uMMORPG 2D Remastered : https://u3d.as/2FJ8
+All Addons for uSurvival : https://u3d.as/38bS
+
+
+                                      Installation and Configuration
+
+1. Edit the "UsableItem.cs"  Script in “Assets/uMMORPG/Scripts/ScriptableItems/" 
+   a)   Find line     public abstract class UsableItem : ScriptableItem
+        change to     public abstract partial class UsableItem : ScriptableItem
+
+
+2. Edit the "PlayerEquipment.cs"  Script in “Assets/uMMORPG/Scripts/" 
+   a)   Find line     bool CanReplaceAllBones(SkinnedMeshRenderer equipmentSkin)
+        change to     public bool CanReplaceAllBones(SkinnedMeshRenderer equipmentSkin)
+
+   b)   Find line     void ReplaceAllBones(SkinnedMeshRenderer equipmentSkin)
+        change to     public void ReplaceAllBones(SkinnedMeshRenderer equipmentSkin)
+
+   c)   Find line     void RebindAnimators()
+        change to     public void RebindAnimators()
+
+
+3. a) Delete or disable the "CharacterInfo", "CharacterCreation" and "CharacterSelection" from Canvas
+   b) Drag the "GFF CharacterSelection Extended.prefab" from (Addons\GFF Character Selection Extended\Prefabs\) to the Canvas.
+   c) Drag the "GFF CharacterCreationExtended.prefab" from (Addons\GFF Character Creation and Customization\Prefabs\) to the Canvas.
+   d) Drag the "GFF CharacterCreationExtendedPositions.prefab" from (Addons\GFF Character Creation and Customization\Prefabs\) to the Scene.
+   e) Drag the "CharacterInfo.prefab" from (\Prefabs\)to the canvas element so canvas is the parent.
+
+
+4. Select the "GFF Character Selection Extended" object. In the inspector 
+	a) Drag in "Manager" the object "NetworkManager"
+	b) Drag in "Character Creation Extended" the object "GFF CharacterCreation Extended" from   Scene\Canvas\GFF CharacterCreation Extended
+    c) Drag in "Ui Confirmation" the object "Confirmation"  from   Scene\Canvas\Confirmation
+	d) Drag in "Manager" the object "NetworkManager"
+
+
+5. Select the "GFF CharacterCreation Extended" object in (Scene \ Canvas \ GFF Character Creation Extended). In the inspector 	
+    a) Drag in "Manager" the object "NetworkManager"
+	b) Drag in "Positions" the object "GFF Character Creation & Customization" from Scene
+
+
+6. Edit the "NetworkManagerMMO.cs"  Script in “Assets/uMMORPG/Scripts" 
+   a) before line    preview.AddComponent<SelectableCharacter>();
+         add line    SetCustomization(character, player);
+
+
+7. Edit the "Database.cs" Script in “ Assets\uMMORPG\Scripts " 
+   a)  after line     public bool deleted { get; set; }
+        add lines     public RaceList race { get; set; }
+                      public string gender { get; set; }
+
+
+   b) before line     LoadInventory(player.inventory);
+        add lines     player.race = row.race;
+                      player.gender = row.gender;
+
+
+   c)  after line     online = online,
+        add lines     race = player.race,
+                      gender = player.gender,
+
+
+8. Edit the "UICharacterInfo.cs" Script in “ Assets/uMMORPG/Scripts/_UI " 
+	  after line       skillExperienceText.text = player.skillExperience.ToString();
+		add line       Utils.InvokeMany(typeof(UICharacterInfo), this, "Update_", player);
+
+  b) in Canvas\Shortcuts Drag in field "Character Info Panel" from Canvas\CharacterInfo\CharacterInfoPanel
+
+
+9. Edit the "Player.cs"  Script in “Assets/uMMORPG/Scripts" 
+   a)   find line    nameOverlay.color = nameOverlayDefaultColor;
+        change to    nameOverlay.color = raceData.RaceColor(race);
+
+
+10. Edit all player prefabs
+  a) add script "PlayerCustomization"
+  b) in script "Player" in field "Race Data" select "Race data" from (GFF Character Characteristics - Race, Class, Gender, Specialization/Races Data.asset)
+
+
+    (in folder "GFF Character Creation and Customization/Prefabs/Players/" prepared player prefab)
+  c) To be able to change textures you need to do the following settings in the script "PlayerCustomization"
+   -- add mesh (Skin, Hair, Brow, Eye) from this prefab  - if they are present on this prefab
+   -- set up position if this gameobject has multiple materials
+   -- add to the array new materials (we have prepared several modified Materials for archer and warrior)

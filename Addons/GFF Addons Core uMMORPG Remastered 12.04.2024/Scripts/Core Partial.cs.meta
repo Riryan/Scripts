@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: ec011627f76476a48a209cddc7012ad8
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 166386
+  packageName: Passive combat skills for uMMORPG Remastered
+  packageVersion: 1.7
+  assetPath: Assets/uMMORPG/Scripts/Addons/GFF Addons Core uMMORPG Remastered 15.07.2024/Scripts/Core
+    Partial.cs
+  uploadId: 724751

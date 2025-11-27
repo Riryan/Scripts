@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 1712656b0bb46ab42b1f4ac21650075c
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 166386
+  packageName: Passive combat skills for uMMORPG Remastered
+  packageVersion: 1.7
+  assetPath: Assets/uMMORPG/Scripts/Addons/GFF Character Info Extended/Prefabs/ElementalResistanceSlot.prefab
+  uploadId: 724751
