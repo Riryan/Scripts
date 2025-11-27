@@ -158,29 +158,32 @@ public long gold
     }
 #endif
 
-    void Update()
+void Update()
+{
+    if (isClient)
+        UpdateClient();
+
+    if (isServer && IsWorthUpdating())
     {
-        if (isClient)
-            UpdateClient();
+        if (movement != null)
+            movement.SetSpeed(speed);
 
-        if (isServer && IsWorthUpdating())
-        {
-            if (movement != null)
-                movement.SetSpeed(speed);
+        if (target != null && target.IsHidden())
+            target = null;
 
-            if (target != null && target.IsHidden())
-                target = null;
+        // change-only sync for _state
+        string newState = UpdateServer();
+        if (newState != _state)
+            _state = newState;
 
-            _state = UpdateServer();
-
-            #if UNITY_SERVER || UNITY_EDITOR
-            AOI_TryNotifyMove();
-            #endif
-        }
-
-        if (!isServerOnly)
-            UpdateOverlays();
+        #if UNITY_SERVER || UNITY_EDITOR
+        AOI_TryNotifyMove();
+        #endif
     }
+
+    if (!isServerOnly)
+        UpdateOverlays();
+}
 
     // --------- Abstract update hooks ---------
 
