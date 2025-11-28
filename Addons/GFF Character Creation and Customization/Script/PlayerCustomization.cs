@@ -17,7 +17,6 @@ namespace GFFAddons
         Ears, EyeBrows,
         Details, Back, Arms, Hips, Jewelry,LeftHand,RightHand
     }
-
     [Serializable] public class CustomizationObject
     {
         public string name;
@@ -117,7 +116,8 @@ namespace GFFAddons
         public bool rescaling;
         public float scaleMin = 0.5f;
         public float scaleMax = 1.5f;
-
+        [Header("Preview / Offline Mode")]
+        public bool allowOfflinePreview = true;
         public SyncList<int> values = new SyncList<int>();
         [SyncVar(hook = nameof(OnScaleChanged))] public float scale = 1;
 
@@ -195,7 +195,7 @@ namespace GFFAddons
             // Headless/server build: skip any visual customization work.
             return;
     #else
-            if (!isClient) return; // Only apply visuals on the client (host or remote)
+            if (!isClient && !allowOfflinePreview) return;// Only apply visuals on the client (host or remote)
             SetCustomization();
             // Client-only: reset local equip overrides and request equipment replay at login
             ResetEquipOverrideStateAndApplyBase();
@@ -586,7 +586,7 @@ namespace GFFAddons
 
         void EnsureEquipBuffers()
         {
-            if (!isClient) return;
+            if (!isClient && !allowOfflinePreview) return;
             if (slotCount < 0)
             {
                 var eq = GetComponent<PlayerEquipment>();
@@ -623,7 +623,7 @@ namespace GFFAddons
         // Rebuild login-state: clear overrides/hides and apply base (or zero-fallback) locally.
         void ResetEquipOverrideStateAndApplyBase()
         {
-            if (!isClient) return;
+            if (!isClient && !allowOfflinePreview) return;
             EnsureEquipBuffers();
 
             int catCount = customization != null ? customization.Length : 0;
@@ -668,7 +668,7 @@ namespace GFFAddons
         // Ask PlayerEquipment (if present) to replay current gear into this component.
         void RequestEquipmentRebuildFromProvider()
         {
-            if (!isClient) return;
+            if (!isClient && !allowOfflinePreview) return;
             var eq = GetComponent<PlayerEquipment>();
             if (eq != null)
                 eq.SendMessage("Customization_OnRebuildRequested", this, SendMessageOptions.DontRequireReceiver);
@@ -688,7 +688,7 @@ namespace GFFAddons
 
         void SetCategoryHidden(int catIndex, bool hidden)
         {
-            if (!isClient) return;
+            if (!isClient && !allowOfflinePreview) return;
             if (customization == null || catIndex < 0 || catIndex >= customization.Length) return;
             var cat = customization[catIndex];
             if (cat == null) return;
@@ -713,7 +713,7 @@ namespace GFFAddons
 
         public void OnSlotEquipped(int slotIndex, EquipmentItemType type, int overrideIndex, EquipmentItemType[] hides)
         {
-            if (!isClient) return;
+            if (!isClient && !allowOfflinePreview) return;
             EnsureEquipBuffers();
 
             if (overrideIndex >= 0)
@@ -753,7 +753,7 @@ namespace GFFAddons
 
         public void OnSlotUnequipped(int slotIndex, EquipmentItemType type, int overrideIndex, EquipmentItemType[] hides)
         {
-            if (!isClient) return;
+            if (!isClient && !allowOfflinePreview) return;
             EnsureEquipBuffers();
 
             if (overrideIndex >= 0)

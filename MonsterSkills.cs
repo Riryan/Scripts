@@ -2,16 +2,13 @@
 
 public class MonsterSkills : Skills
 {
-    
     [HideInInspector] public int lastSkill = -1;
 
     public override void OnStartServer()
     {
-        
         foreach (ScriptableSkill skillData in skillTemplates)
             skills.Add(new Skill(skillData));
     }
-
     
     public float CurrentCastRange()
     {
@@ -19,17 +16,10 @@ public class MonsterSkills : Skills
                ? skills[currentSkill].castRange
                : 0;
     }
-
-    
-    
-    
     
     public int NextSkill()
     {
-        
-        
-        
-        
+
         for (int i = 0; i < skills.Count; ++i)
         {
             int index = (lastSkill + 1 + i) % skills.Count;

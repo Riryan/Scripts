@@ -61,6 +61,7 @@ public partial struct CharactersAvailableMsg : NetworkMessage
                 className = player.className,
                 isGameMaster = player.isGameMaster,
                 equipment = player.equipment.slots.ToArray()
+                //equipment = System.Array.Empty<ItemSlot>()
             };
         }
         Utils.InvokeMany(typeof(CharactersAvailableMsg), this, "Load_", players);

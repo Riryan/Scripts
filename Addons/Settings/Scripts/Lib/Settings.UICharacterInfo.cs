@@ -10,7 +10,7 @@ public partial class UI_CharacterInfoAttributes : MonoBehaviour
     // Grabs our settings variables.
     private void Start()
     {
-        settingsVariables = FindObjectOfType<UI_SettingsVariables>().GetComponent<UI_SettingsVariables>();
+        settingsVariables = FindFirstObjectOfType<UI_SettingsVariables>().GetComponent<UI_SettingsVariables>();
     }
 
     // Set our hotkey based on the players selection.

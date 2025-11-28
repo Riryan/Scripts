@@ -172,6 +172,8 @@ public class PlayerEquipment : Equipment
     {
         ItemSlot slot = slots[index];
         EquipmentInfo info = slotInfo[index];
+           // Debug.Log($"[RefreshLocation] slot {index} category={info.requiredCategory} location={info.location} " +
+           //   $"slotAmount={slot.amount} modelPrefab={(slot.amount > 0 && slot.item.data is EquipmentItem eq ? eq.modelPrefab : null)}");
         if (info.requiredCategory != "" && info.location != null)
         {
             if (info.location.childCount > 0) Destroy(info.location.GetChild(0).gameObject);

@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c56561794576c4c4a97960c8876c3e9d, type: 3}
+  m_Name: Terms And Conditions
+  m_EditorClassIdentifier: 
+  version: 0.1a
+  termsAndCondition: "The Alpha is pre-release, experimental software and may be
+    changed, suspended, or cancelled at any time, for any reason, without notice.
+    \n\nSubject to these Terms, we grant you a limited, revocable, non-exclusive,
+    non-transferable, non-sublicensable license to download, install, and use the
+    Alpha version of the Game solely:\n\nfor your personal, non-commercial use; and\nfor
+    testing, feedback, and evaluation.\nWe may add, change, or remove features; wipe
+    progress; or end the Alpha at any time.\n\n\n\nThank you\n- Crow's Food Games"

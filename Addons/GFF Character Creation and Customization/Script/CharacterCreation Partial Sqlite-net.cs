@@ -18,11 +18,19 @@ public partial class Database
 
     public void CharacterSave_Customization(Player player)
     {
-        // quests: remove old entries first, then add all new ones
+        // remove old entry first
         connection.Execute("DELETE FROM character_customization WHERE character=?", player.name);
 
+        // only persist as many entries as we have customization categories
+        int maxCount = player.customization.values.Count;
+        if (player.customization.customization != null &&
+            player.customization.customization.Length < maxCount)
+        {
+            maxCount = player.customization.customization.Length;
+        }
+
         string _values = "";
-        for (int i = 0; i < player.customization.values.Count; i++)
+        for (int i = 0; i < maxCount; i++)
         {
             _values += player.customization.values[i] + ";";
         }
@@ -31,24 +39,50 @@ public partial class Database
         connection.Insert(new character_customization
         {
             character = player.name,
-            values = _values,
-            scale = player.customization.scale
+            values    = _values,
+            scale     = player.customization.scale
         });
     }
 
     public void CharacterLoad_Customization(Player player)
     {
-        character_customization info = connection.FindWithQuery<character_customization>("Select * FROM character_customization WHERE character=?", player.name);
+        character_customization info =
+            connection.FindWithQuery<character_customization>(
+                "Select * FROM character_customization WHERE character=?",
+                player.name);
 
-        if (info != null)
+        // always start from a clean list to avoid runaway growth
+        player.customization.values.Clear();
+
+        if (info != null && !string.IsNullOrEmpty(info.values))
         {
+            // parse all entries from the stored string
+            var parsed = new System.Collections.Generic.List<int>();
             string temp = info.values;
-            //We are looping through all instances of the letter in the given string
+
+            // loop through all ";"-separated ints
             while (temp.IndexOf(";") != -1)
             {
-                player.customization.values.Add(int.Parse(temp.Substring(0, temp.IndexOf(";"))));
-                temp = temp.Remove(0, temp.IndexOf(";") + 1);
+                int sep = temp.IndexOf(";");
+                string part = temp.Substring(0, sep);
+                if (!string.IsNullOrEmpty(part))
+                {
+                    if (int.TryParse(part, out int val))
+                        parsed.Add(val);
+                }
+                temp = temp.Remove(0, sep + 1);
             }
+
+            // clamp to the number of customization categories on this prefab
+            int maxCount = parsed.Count;
+            if (player.customization.customization != null &&
+                player.customization.customization.Length < maxCount)
+            {
+                maxCount = player.customization.customization.Length;
+            }
+
+            for (int i = 0; i < maxCount; ++i)
+                player.customization.values.Add(parsed[i]);
 
             player.customization.scale = info.scale;
         }

@@ -202,7 +202,7 @@ IEnumerator ClientZoneTransferReconnect()
     {
         NetworkClient.RegisterHandler<ErrorMsg>(OnClientError, false);
         NetworkClient.RegisterHandler<CharactersAvailableMsg>(OnClientCharactersAvailable);
-        // zone transfer handler (safe even if never used)
+        // zone transfer handler
         NetworkClient.RegisterHandler<ZoneTransferMsg>(OnClientZoneTransfer, false);
         onStartClient.Invoke();
 
@@ -213,6 +213,7 @@ IEnumerator ClientZoneTransferReconnect()
 
     public override void OnStartServer()
     {
+        Debug.Log("[OnStartServer] Registering character handlers.");
         Database.singleton.Connect();
         NetworkServer.RegisterHandler<CharacterCreateMsg>(OnServerCharacterCreate);
         NetworkServer.RegisterHandler<CharacterSelectMsg>(OnServerCharacterSelect);
@@ -319,27 +320,97 @@ public override void OnServerConnect(NetworkConnectionToClient conn)
         }
     }
 
-    void LoadPreview(GameObject prefab, Transform location, int selectionIndex, CharactersAvailableMsg.CharacterPreview character)
-    {
-        GameObject preview = Instantiate(prefab.gameObject, location.position, location.rotation);
-        preview.transform.parent = location;
-        Player player = preview.GetComponent<Player>();
+void LoadPreview(GameObject prefab,
+                 Transform location,
+                 int selectionIndex,
+                 CharactersAvailableMsg.CharacterPreview character)
+{
+    // --- 0) Spawn & basic setup ---
+    GameObject preview = Instantiate(prefab.gameObject, location.position, location.rotation);
+    preview.transform.SetParent(location, true);
 
-        player.name = character.name;
-        player.isGameMaster = character.isGameMaster;
-        for (int i = 0; i < character.equipment.Length; ++i)
+    Player player = preview.GetComponent<Player>();
+    player.name         = character.name;
+    player.isGameMaster = character.isGameMaster;
+
+    PlayerEquipment equip = (PlayerEquipment)player.equipment;
+
+    // Debug: see what the client actually received
+    int receivedCount = character.equipment != null ? character.equipment.Length : -1;
+    //Debug.Log($"[Preview Client] {character.name} received equipment length: {receivedCount}");
+
+    // --- 1) Apply base customization (body/face/race/etc.) ---
+    // Uses CharacterCreation Partial data: race, gender, customization string, scale
+    SetCustomization(character, player);
+
+    // --- 2) Prepare equipment slots on the preview player ---
+    player.equipment.slots.Clear();
+    int slotCount = equip.slotInfo.Length;
+    for (int i = 0; i < slotCount; ++i)
+        player.equipment.slots.Add(new ItemSlot());
+
+    if (character.equipment == null)
+    {
+        // nothing to preview
+        goto PreviewSelectable;
+    }
+
+    int n = Mathf.Min(slotCount, character.equipment.Length);
+
+    // --- 3) Rebuild items from their ScriptableItem names & apply them ---
+    for (int i = 0; i < n; ++i)
+    {
+        ItemSlot src = character.equipment[i];
+
+        if (src.amount <= 0)
+            continue;
+
+        string itemName = src.item.name;
+
+        if (string.IsNullOrWhiteSpace(itemName))
+            continue;
+
+        // look up ScriptableItem on the client
+        if (!ScriptableItem.All.TryGetValue(itemName.GetStableHashCode(), out ScriptableItem itemData))
         {
-            ItemSlot slot = character.equipment[i];
-            player.equipment.slots.Add(slot);
-            if (slot.amount > 0)
-            {
-                ((PlayerEquipment)player.equipment).RefreshLocation(i);
-            }
+            //Debug.LogWarning($"[Preview Client] {character.name} slot {i}: unknown item '{itemName}'");
+            continue;
         }
-        SetCustomization(character, player); 
-        preview.AddComponent<SelectableCharacter>();
-        preview.GetComponent<SelectableCharacter>().index = selectionIndex;
-    } 
+
+        // rebuild an Item instance from the ScriptableItem, copying runtime state
+        Item item = new Item(itemData);
+        item.durability         = src.item.durability;
+        item.summonedHealth     = src.item.summonedHealth;
+        item.summonedLevel      = src.item.summonedLevel;
+        item.summonedExperience = src.item.summonedExperience;
+
+        ItemSlot rebuilt = new ItemSlot(item, src.amount);
+        player.equipment.slots[i] = rebuilt;
+
+#if !UNITY_SERVER
+        // --- 4) Drive PlayerCustomization with gear (same idea as OnSlotEquipped) ---
+        PlayerCustomization cust = player.customization;
+        if (cust != null && itemData is EquipmentItem eq)
+        {
+            cust.OnSlotEquipped(
+                i,
+                eq.targetCustomizationType,
+                eq.overrideCustomizationIndex,
+                eq.hideWhileEquipped
+            );
+        }
+#endif
+
+        // --- 5) Spawn or update the mesh / model for this slot ---
+        equip.RefreshLocation(i);
+    }
+
+PreviewSelectable:
+    // --- 6) Make preview selectable in UI ---
+    var selectable = preview.AddComponent<SelectableCharacter>();
+    selectable.index = selectionIndex;
+}
+
 
     public void ClearPreviews()
     {
@@ -352,7 +423,7 @@ public override void OnServerConnect(NetworkConnectionToClient conn)
     void OnClientCharactersAvailable(CharactersAvailableMsg message)
     {
         charactersAvailableMsg = message;
-        Debug.Log("characters available:" + charactersAvailableMsg.characters.Length);
+        //Debug.Log("characters available:" + charactersAvailableMsg.characters.Length);
 
         state = NetworkState.Lobby;
 
@@ -391,31 +462,40 @@ public override void OnServerConnect(NetworkConnectionToClient conn)
         return GetStartPosition();
     } 
 
-    Player CreateCharacter(GameObject classPrefab, string characterName, string account, bool gameMaster)
+Player CreateCharacter(GameObject classPrefab, string characterName, string account, bool gameMaster)
+{
+    Player player = Instantiate(classPrefab).GetComponent<Player>();
+    player.name = characterName;
+    player.account = account;
+    player.className = classPrefab.name;
+    player.transform.position = GetStartPositionFor(player.className).position;
+
+    // init inventory
+    for (int i = 0; i < player.inventory.size; ++i)
     {
-        Player player = Instantiate(classPrefab).GetComponent<Player>();
-        player.name = characterName;
-        player.account = account;
-        player.className = classPrefab.name;
-        player.transform.position = GetStartPositionFor(player.className).position;
-        for (int i = 0; i < player.inventory.size; ++i)
-        {
-            player.inventory.slots.Add(i < player.inventory.defaultItems.Length
-                ? new ItemSlot(new Item(player.inventory.defaultItems[i].item), player.inventory.defaultItems[i].amount)
-                : new ItemSlot());
-        }
-        for (int i = 0; i < ((PlayerEquipment)player.equipment).slotInfo.Length; ++i)
-        {
-            EquipmentInfo info = ((PlayerEquipment)player.equipment).slotInfo[i];
-            player.equipment.slots.Add(info.defaultItem.item != null
-                ? new ItemSlot(new Item(info.defaultItem.item), info.defaultItem.amount)
-                : new ItemSlot());
-        }
-        player.health.current = player.health.max;
-        player.mana.current = player.mana.max;
-        player.isGameMaster = gameMaster;
-        return player;
-    } 
+        player.inventory.slots.Add(i < player.inventory.defaultItems.Length
+            ? new ItemSlot(new Item(player.inventory.defaultItems[i].item), player.inventory.defaultItems[i].amount)
+            : new ItemSlot());
+    }
+
+    // init equipment
+    for (int i = 0; i < ((PlayerEquipment)player.equipment).slotInfo.Length; ++i)
+    {
+        EquipmentInfo info = ((PlayerEquipment)player.equipment).slotInfo[i];
+        player.equipment.slots.Add(info.defaultItem.item != null
+            ? new ItemSlot(new Item(info.defaultItem.item), info.defaultItem.amount)
+            : new ItemSlot());
+    }
+
+    // init warehouse slots for new character
+    player.EnsureWarehouseInitialized();
+
+    player.health.current = player.health.max;
+    player.mana.current = player.mana.max;
+    player.isGameMaster = gameMaster;
+    return player;
+}
+
 
     public override void OnServerAddPlayer(NetworkConnectionToClient conn) { Debug.LogWarning("Use the CharacterSelectMsg instead"); } // ref. :contentReference[oaicite:21]{index=21}
 
@@ -453,31 +533,55 @@ public override void OnServerConnect(NetworkConnectionToClient conn)
         else ServerSendError(conn, "CharacterCreate: not in lobby", true);
     } 
 
-    void OnServerCharacterSelect(NetworkConnectionToClient conn, CharacterSelectMsg message)
+void OnServerCharacterSelect(NetworkConnectionToClient conn, CharacterSelectMsg message)
+{
+
+    // connection must be in lobby
+    if (!lobby.ContainsKey(conn))
     {
-        if (lobby.ContainsKey(conn))
+        ServerSendError(conn, "CharacterSelect: not in lobby", true);
+        return;
+    }
+
+    string account = lobby[conn];
+    List<string> characters = Database.singleton.CharactersForAccount(account);
+
+    // index sanity check
+    if (message.index < 0 || message.index >= characters.Count)
+    {
+        ServerSendError(conn, "invalid character index", false);
+        return;
+    }
+
+    string characterName = characters[message.index];
+
+    try
+    {
+        Debug.Log($"[OnServerCharacterSelect] account='{account}' index={message.index} name='{characterName}'");
+
+        GameObject go = Database.singleton.CharacterLoad(characterName, playerClasses, false);
+        if (go == null)
         {
-            string account = lobby[conn];
-            List<string> characters = Database.singleton.CharactersForAccount(account);
-            if (0 <= message.index && message.index < characters.Count)
-            {
-                GameObject go = Database.singleton.CharacterLoad(characters[message.index], playerClasses, false);
-                NetworkServer.AddPlayerForConnection(conn, go);
-                onServerCharacterSelect.Invoke(account, go, conn, message);
-                lobby.Remove(conn);
-            }
-            else
-            {
-                Debug.Log("invalid character index: " + account + " " + message.index);
-                ServerSendError(conn, "invalid character index", false);
-            }
+            Debug.LogError($"OnServerCharacterSelect: CharacterLoad returned null for '{characterName}' (account '{account}').");
+            ServerSendError(conn, "CharacterLoad failed.", true);
+            conn.Disconnect();
+            return;
         }
-        else
-        {
-            Debug.Log("CharacterSelect: not in lobby" + conn);
-            ServerSendError(conn, "CharacterSelect: not in lobby", true);
-        }
-    } 
+
+        NetworkServer.AddPlayerForConnection(conn, go);
+        onServerCharacterSelect.Invoke(account, go, conn, message);
+        lobby.Remove(conn);
+
+        
+    }
+    catch (Exception ex)
+    {
+        Debug.LogError($"OnServerCharacterSelect exception for account '{account}', character '{characterName}': {ex}");
+        ServerSendError(conn, "CharacterSelect failed server-side. See server logs.", true);
+        conn.Disconnect();
+    }
+    
+}
 
     void OnServerCharacterDelete(NetworkConnection conn, CharacterDeleteMsg message)
     {
@@ -500,7 +604,7 @@ public override void OnServerConnect(NetworkConnectionToClient conn)
         }
         else
         {
-            Debug.Log("CharacterDelete: not in lobby: " + conn);
+            //Debug.Log("CharacterDelete: not in lobby: " + conn);
             ServerSendError(conn, "CharacterDelete: not in lobby", true);
         }
     } 

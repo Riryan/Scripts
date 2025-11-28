@@ -5,6 +5,7 @@ using System.IO;
 using System.Collections.Generic;
 using SQLite; 
 using UnityEngine.Events;
+using GFFAddons;
 
 public partial class Database : MonoBehaviour
 {
@@ -232,29 +233,36 @@ public partial class Database : MonoBehaviour
         return result;
     }
 
-    void LoadInventory(PlayerInventory inventory)
+void LoadInventory(PlayerInventory inventory)
+{
+    // determine which character this inventory belongs to
+    Player player = inventory.GetComponent<Player>();
+    string characterName = player != null ? player.name : inventory.name;
+
+    // ensure slots exist
+    for (int i = 0; i < inventory.size; ++i)
+        inventory.slots.Add(new ItemSlot());
+
+    foreach (character_inventory row in connection.Query<character_inventory>(
+                 "SELECT * FROM character_inventory WHERE character=?", characterName))
     {
-        
-        for (int i = 0; i < inventory.size; ++i)
-            inventory.slots.Add(new ItemSlot());
-        foreach (character_inventory row in connection.Query<character_inventory>("SELECT * FROM character_inventory WHERE character=?", inventory.name))
+        if (row.slot < inventory.size)
         {
-            if (row.slot < inventory.size)
+            if (ScriptableItem.All.TryGetValue(row.name.GetStableHashCode(), out ScriptableItem itemData))
             {
-                if (ScriptableItem.All.TryGetValue(row.name.GetStableHashCode(), out ScriptableItem itemData))
-                {
-                    Item item = new Item(itemData);
-                    item.durability = Mathf.Min(row.durability, item.maxDurability);
-                    item.summonedHealth = row.summonedHealth;
-                    item.summonedLevel = row.summonedLevel;
-                    item.summonedExperience = row.summonedExperience;
-                    inventory.slots[row.slot] = new ItemSlot(item, row.amount);
-                }
-                else Debug.LogWarning("LoadInventory: skipped item " + row.name + " for " + inventory.name + " because it doesn't exist anymore. If it wasn't removed intentionally then make sure it's in the Resources folder.");
+                Item item = new Item(itemData);
+                item.durability         = Mathf.Min(row.durability, item.maxDurability);
+                item.summonedHealth     = row.summonedHealth;
+                item.summonedLevel      = row.summonedLevel;
+                item.summonedExperience = row.summonedExperience;
+                inventory.slots[row.slot] = new ItemSlot(item, row.amount);
             }
-            else Debug.LogWarning("LoadInventory: skipped slot " + row.slot + " for " + inventory.name + " because it's bigger than size " + inventory.size);
+            else Debug.LogWarning("LoadInventory: skipped item " + row.name + " for " + characterName + " because it doesn't exist anymore. If it wasn't removed intentionally then make sure it's in the Resources folder.");
         }
+        else Debug.LogWarning("LoadInventory: skipped slot " + row.slot + " for " + characterName + " because it's bigger than size " + inventory.size);
     }
+}
+
     void LoadWarehouse(Player player)
     {
         const int WarehouseSize = 50;
@@ -291,30 +299,34 @@ public partial class Database : MonoBehaviour
         }
     }
 
-    void LoadEquipment(PlayerEquipment equipment)
-    {
-        
-        for (int i = 0; i < equipment.slotInfo.Length; ++i)
-            equipment.slots.Add(new ItemSlot());
+void LoadEquipment(PlayerEquipment equipment)
+{
+    Player player = equipment.GetComponent<Player>();
+    string characterName = player != null ? player.name : equipment.name;
 
-        foreach (character_equipment row in connection.Query<character_equipment>("SELECT * FROM character_equipment WHERE character=?", equipment.name))
+    for (int i = 0; i < equipment.slotInfo.Length; ++i)
+        equipment.slots.Add(new ItemSlot());
+
+    foreach (character_equipment row in connection.Query<character_equipment>(
+                 "SELECT * FROM character_equipment WHERE character=?", characterName))
+    {
+        if (row.slot < equipment.slotInfo.Length)
         {
-            if (row.slot < equipment.slotInfo.Length)
+            if (ScriptableItem.All.TryGetValue(row.name.GetStableHashCode(), out ScriptableItem itemData))
             {
-                if (ScriptableItem.All.TryGetValue(row.name.GetStableHashCode(), out ScriptableItem itemData))
-                {
-                    Item item = new Item(itemData);
-                    item.durability = Mathf.Min(row.durability, item.maxDurability);
-                    item.summonedHealth = row.summonedHealth;
-                    item.summonedLevel = row.summonedLevel;
-                    item.summonedExperience = row.summonedExperience;
-                    equipment.slots[row.slot] = new ItemSlot(item, row.amount);
-                }
-                else Debug.LogWarning("LoadEquipment: skipped item " + row.name + " for " + equipment.name + " because it doesn't exist anymore. If it wasn't removed intentionally then make sure it's in the Resources folder.");
+                Item item = new Item(itemData);
+                item.durability         = Mathf.Min(row.durability, item.maxDurability);
+                item.summonedHealth     = row.summonedHealth;
+                item.summonedLevel      = row.summonedLevel;
+                item.summonedExperience = row.summonedExperience;
+                equipment.slots[row.slot] = new ItemSlot(item, row.amount);
             }
-            else Debug.LogWarning("LoadEquipment: skipped slot " + row.slot + " for " + equipment.name + " because it's bigger than size " + equipment.slotInfo.Length);
+            else Debug.LogWarning("LoadEquipment: skipped item " + row.name + " for " + characterName + " because it doesn't exist anymore. If it wasn't removed intentionally then make sure it's in the Resources folder.");
         }
+        else Debug.LogWarning("LoadEquipment: skipped slot " + row.slot + " for " + characterName + " because it's bigger than size " + equipment.slotInfo.Length);
     }
+}
+
 
     void LoadItemCooldowns(Player player)
     {        
@@ -389,39 +401,48 @@ public partial class Database : MonoBehaviour
         }
     }
 
-    public GameObject CharacterLoad(string characterName, List<Player> prefabs, bool isPreview)
+public GameObject CharacterLoad(string characterName, List<Player> prefabs, bool isPreview)
+{
+    characters row = connection.FindWithQuery<characters>(
+        "SELECT * FROM characters WHERE name=? AND deleted=0",
+        characterName);
+
+    if (row != null)
     {
-        characters row = connection.FindWithQuery<characters>("SELECT * FROM characters WHERE name=? AND deleted=0", characterName);
-        if (row != null)
+        Player prefab = prefabs.Find(p => p.name == row.classname);
+        if (prefab != null)
         {
-            Player prefab = prefabs.Find(p => p.name == row.classname);
-            if (prefab != null)
+            GameObject go = Instantiate(prefab.gameObject);
+            Player player = go.GetComponent<Player>();
+
+            // basic identity / stats
+            player.name                                   = row.name;
+            player.account                                = row.account;
+            player.className                              = row.classname;
+            Vector3 position                              = new Vector3(row.x, row.y, row.z);
+            player.level.current                          = Mathf.Min(row.level, player.level.max);
+            player.strength.value                         = row.strength;
+            player.intelligence.value                     = row.intelligence;
+            player.experience.current                     = row.experience;
+            ((PlayerSkills)player.skills).skillExperience = row.skillExperience;
+            player.gold                                   = row.gold;
+            player.isGameMaster                           = row.gamemaster;
+            player.itemMall.coins                         = row.coins;
+
+            // spawn position
+            if (player.movement.IsValidSpawnPoint(position))
             {
-                GameObject go = Instantiate(prefab.gameObject);
-                Player player = go.GetComponent<Player>();
-                player.name                                   = row.name;
-                player.account                                = row.account;
-                player.className                              = row.classname;
-                Vector3 position                              = new Vector3(row.x, row.y, row.z);
-                player.level.current                          = Mathf.Min(row.level, player.level.max); 
-                player.strength.value                         = row.strength;
-                player.intelligence.value                     = row.intelligence;
-                player.experience.current                     = row.experience;
-                ((PlayerSkills)player.skills).skillExperience = row.skillExperience;
-                player.gold                                   = row.gold;
-                player.isGameMaster                           = row.gamemaster;
-                player.itemMall.coins                         = row.coins;
-                
-                if (player.movement.IsValidSpawnPoint(position))
-                {
-                    player.movement.Warp(position);
-                }
-                
-                else
-                {
-                    Transform start = NetworkManagerMMO.GetNearestStartPosition(position);
-                    player.movement.Warp(start.position);
-                }
+                player.movement.Warp(position);
+            }
+            else
+            {
+                Transform start = NetworkManagerMMO.GetNearestStartPosition(position);
+                player.movement.Warp(start.position);
+            }
+
+            // DB loads
+            try
+            {
                 LoadInventory(player.inventory);
                 LoadEquipment((PlayerEquipment)player.equipment);
                 LoadItemCooldowns(player);
@@ -430,79 +451,129 @@ public partial class Database : MonoBehaviour
                 LoadQuests(player.quests);
                 LoadGuildOnDemand(player.guild);
                 LoadWarehouse(player);
-
-                player.health.current = row.health;
-                player.mana.current = row.mana;
-                if (!isPreview)
-                    connection.Execute("UPDATE characters SET online=1, lastsaved=? WHERE name=?", DateTime.UtcNow, characterName);
-
-                // --- Graveyard / Bindpoint load ---
-                #if UNITY_SERVER || UNITY_EDITOR
-                player.graveyardTombstoneId = row.graveyardTombstoneId;
-                //if (player.graveyardTombstoneId >= 0)
-                    //Debug.Log($"[DB][Graveyard] Loaded bindpoint tombstoneId={row.graveyardTombstoneId} for {player.name}");
-                #endif
-
-                onCharacterLoad.Invoke(player);
-
-                return go;
             }
-            else Debug.LogError("no prefab found for class: " + row.classname);
-        }
-        return null;
-    }
-
-    void SaveInventory(PlayerInventory inventory)
-    {
-        connection.Execute("DELETE FROM character_inventory WHERE character=?", inventory.name);
-        for (int i = 0; i < inventory.slots.Count; ++i)
-        {
-            ItemSlot slot = inventory.slots[i];
-            if (slot.amount > 0) 
+            catch (Exception dbEx)
             {
-                
-                connection.InsertOrReplace(new character_inventory{
-                    character = inventory.name,
-                    slot = i,
-                    name = slot.item.name,
-                    amount = slot.amount,
-                    durability = slot.item.durability,
-                    summonedHealth = slot.item.summonedHealth,
-                    summonedLevel = slot.item.summonedLevel,
-                    summonedExperience = slot.item.summonedExperience
-                });
+                Debug.LogError($"[CharacterLoad] DB load error for '{characterName}' (preview={isPreview}): {dbEx}");
+                // continue spawning even if some DB parts failed
             }
+
+            // DEBUG: see what equipment we actually loaded
+            PlayerEquipment eq = (PlayerEquipment)player.equipment;
+            int equippedCount = 0;
+            for (int i = 0; i < eq.slots.Count; ++i)
+            {
+                if (eq.slots[i].amount > 0)
+                {
+                    equippedCount++;
+                }
+            }
+
+            // OPTIONAL: if you ever want server-side visuals for preview instances
+            // (not strictly needed for the network data, since the client handles visuals),
+            // you could refresh locations here for preview-only instances:
+            if (isPreview)
+            {
+                PlayerCustomization custom = player.GetComponent<PlayerCustomization>();
+                if (custom != null)
+                    custom.allowOfflinePreview = true;
+
+                for (int i = 0; i < eq.slots.Count; ++i)
+                {
+                    if (eq.slots[i].amount > 0)
+                        eq.RefreshLocation(i);
+                }
+            }
+
+            // vitals
+            player.health.current = row.health;
+            player.mana.current   = row.mana;
+
+            if (!isPreview)
+            {
+                connection.Execute(
+                    "UPDATE characters SET online=1, lastsaved=? WHERE name=?",
+                    DateTime.UtcNow, characterName);
+            }
+
+#if UNITY_SERVER || UNITY_EDITOR
+            player.graveyardTombstoneId = row.graveyardTombstoneId;
+#endif
+
+            onCharacterLoad.Invoke(player);
+
+            return go;
+        }
+        else
+        {
+            Debug.LogError("no prefab found for class: " + row.classname);
         }
     }
 
-    void SaveEquipment(PlayerEquipment equipment)
+    return null;
+}
+
+
+void SaveInventory(PlayerInventory inventory)
+{
+    Player player = inventory.GetComponent<Player>();
+    string characterName = player != null ? player.name : inventory.name;
+
+    connection.Execute("DELETE FROM character_inventory WHERE character=?", characterName);
+    for (int i = 0; i < inventory.slots.Count; ++i)
     {
-        connection.Execute("DELETE FROM character_equipment WHERE character=?", equipment.name);
-        for (int i = 0; i < equipment.slots.Count; ++i)
+        ItemSlot slot = inventory.slots[i];
+        if (slot.amount > 0)
         {
-            ItemSlot slot = equipment.slots[i];
-            if (slot.amount > 0) 
-            {
-                connection.InsertOrReplace(new character_equipment{
-                    character = equipment.name,
-                    slot = i,
-                    name = slot.item.name,
-                    amount = slot.amount,
-                    durability = slot.item.durability,
-                    summonedHealth = slot.item.summonedHealth,
-                    summonedLevel = slot.item.summonedLevel,
-                    summonedExperience = slot.item.summonedExperience
-                });
-            }
+            connection.InsertOrReplace(new character_inventory{
+                character        = characterName,
+                slot             = i,
+                name             = slot.item.name,
+                amount           = slot.amount,
+                durability       = slot.item.durability,
+                summonedHealth   = slot.item.summonedHealth,
+                summonedLevel    = slot.item.summonedLevel,
+                summonedExperience = slot.item.summonedExperience
+            });
         }
     }
+}
+
+
+void SaveEquipment(PlayerEquipment equipment)
+{
+    Player player = equipment.GetComponent<Player>();
+    string characterName = player != null ? player.name : equipment.name;
+
+    connection.Execute("DELETE FROM character_equipment WHERE character=?", characterName);
+    for (int i = 0; i < equipment.slots.Count; ++i)
+    {
+        ItemSlot slot = equipment.slots[i];
+        if (slot.amount > 0)
+        {
+            connection.InsertOrReplace(new character_equipment{
+                character        = characterName,
+                slot             = i,
+                name             = slot.item.name,
+                amount           = slot.amount,
+                durability       = slot.item.durability,
+                summonedHealth   = slot.item.summonedHealth,
+                summonedLevel    = slot.item.summonedLevel,
+                summonedExperience = slot.item.summonedExperience
+            });
+        }
+    }
+}
+
     void SaveWarehouse(Player player)
     {
         const int WarehouseSize = 50;
 
         connection.Execute("DELETE FROM account_warehouse WHERE account=?", player.account);
 
-        for (int i = 0; i < WarehouseSize; ++i)
+        int slotCount = player.warehouseSlots != null ? player.warehouseSlots.Count : 0;
+
+        for (int i = 0; i < slotCount; ++i)
         {
             ItemSlot slot = player.warehouseSlots[i];
             if (slot.amount > 0)

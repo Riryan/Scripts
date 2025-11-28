@@ -5,6 +5,7 @@ using UnityEngine;
 public partial class EquipmentItem : UsableItem
 {
     [Header("Equipment")]
+    public string DisplayName;
     public string category;
     public int healthBonus;
     public int manaBonus;
@@ -37,7 +38,6 @@ public partial class EquipmentItem : UsableItem
         return FindEquipableSlotFor(player, inventoryIndex) != -1;
     }
 
-    
     public bool CanEquip(Player player, int inventoryIndex, int equipmentIndex)
     {
         EquipmentInfo slotInfo = ((PlayerEquipment)player.equipment).slotInfo[equipmentIndex];
@@ -81,11 +81,19 @@ public partial class EquipmentItem : UsableItem
             }
         }
     }
-
     
     public override string ToolTip()
     {
         StringBuilder tip = new StringBuilder(base.ToolTip());
+            // If we have a DisplayName set, make sure the tooltip shows that
+        if (!string.IsNullOrEmpty(DisplayName))
+        {
+            // If the template still has {NAME}, override it
+            tip.Replace("{NAME}", DisplayName);
+            // If base.ToolTip already replaced {NAME} with the asset name,
+            // replace that asset name with our DisplayName instead
+            tip.Replace(name, DisplayName);
+        }
         tip.Replace("{CATEGORY}", category);
         tip.Replace("{DAMAGEBONUS}", damageBonus.ToString());
         tip.Replace("{DEFENSEBONUS}", defenseBonus.ToString());
