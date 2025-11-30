@@ -1,3 +1,4 @@
+
 using UnityEngine;
 
 public class UI_StatsOverlay : MonoBehaviour
@@ -12,11 +13,13 @@ public class UI_StatsOverlay : MonoBehaviour
     MaterialPropertyBlock matBlock;
     MeshRenderer meshRenderer;
 
-    // Cache last values so we only update when health actually changes
-    int lastCurrent = int.MinValue;
-    int lastMax     = int.MinValue;
+    // Cache last values so we only update when something actually changes
+    int  lastCurrent   = int.MinValue;
+    int  lastMax       = int.MinValue;
+    bool lastIsTarget  = false;
+    bool isCurrentTarget = false;
 
-    private void Awake()
+    void Awake()
     {
         // Try to auto-resolve dependencies if they aren't wired in the prefab
         if (entity == null)
@@ -31,7 +34,7 @@ public class UI_StatsOverlay : MonoBehaviour
         matBlock = new MaterialPropertyBlock();
     }
 
-    private void OnEnable()
+    void OnEnable()
     {
         // Re-resolve in case things were set up at runtime
         if (entity == null)
@@ -49,7 +52,6 @@ public class UI_StatsOverlay : MonoBehaviour
             if (healthBar != null)
                 healthBar.SetActive(false);
 
-            // Nothing useful to do without these, so disable the script
             enabled = false;
             return;
         }
@@ -57,27 +59,40 @@ public class UI_StatsOverlay : MonoBehaviour
         meshRenderer.enabled = true;
         healthBar.SetActive(true);
 
+        // Initialize target state
+        Player player = Player.localPlayer;
+        isCurrentTarget = (player != null) && ((player.nextTarget ?? player.target) == entity);
+
         // Force an initial update so the bar starts in a correct state
-        lastCurrent = int.MinValue;
-        lastMax     = int.MinValue;
+        lastCurrent  = int.MinValue;
+        lastMax      = int.MinValue;
+        lastIsTarget = !isCurrentTarget; // ensure first LateUpdate triggers
         UpdateHealBar();
     }
 
-    private void LateUpdate()
+    void LateUpdate()
     {
         if (entity == null)
             return;
 
-        // Safety: avoid division by zero / nonsense states
         if (entity.health == null || entity.health.max <= 0)
             return;
 
         int current = entity.health.current;
         int max     = entity.health.max;
 
-        // Only update the material if something actually changed
-        if (current == lastCurrent && max == lastMax)
+        // Check if this entity is the current UITarget's target
+        Player player = Player.localPlayer;
+        bool isTargetNow = (player != null) && ((player.nextTarget ?? player.target) == entity);
+
+        // Only update if health or target status changed
+        if (current == lastCurrent && max == lastMax && isTargetNow == lastIsTarget)
             return;
+
+        isCurrentTarget = isTargetNow;
+        lastCurrent     = current;
+        lastMax         = max;
+        lastIsTarget    = isTargetNow;
 
         UpdateHealBar();
     }
@@ -88,17 +103,16 @@ public class UI_StatsOverlay : MonoBehaviour
             return;
 
         int current = entity.health.current;
-        int max     = Mathf.Max(1, entity.health.max); // clamp to avoid zero
-
-        lastCurrent = current;
-        lastMax     = max;
+        int max     = Mathf.Max(1, entity.health.max); // avoid zero
 
         bool alive   = current > 0;
         bool damaged = current < max;
 
-        // Show bar only while alive and damaged
-        meshRenderer.enabled = alive;
-        healthBar.SetActive(alive && damaged);
+        // Show bar while alive AND (damaged OR this is the current target)
+        bool show = alive && (damaged || isCurrentTarget);
+
+        meshRenderer.enabled = show;
+        healthBar.SetActive(show);
 
         float percentLife = current / (float)max;
 
@@ -107,8 +121,8 @@ public class UI_StatsOverlay : MonoBehaviour
         meshRenderer.SetPropertyBlock(matBlock);
     }
 
-    // Kept in case you want to manually hook something else to hide the bar.
-    private void onDeathHide()
+    // Kept in case you ever want to hook some other death logic in the future.
+    void onDeathHide()
     {
         if (healthBar != null)
             healthBar.SetActive(false);
