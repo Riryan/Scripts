@@ -1,6 +1,7 @@
 ﻿using System;
 using UnityEngine;
 using Mirror;
+using UnityEngine.AI;
 
 [RequireComponent(typeof(NetworkNavMeshAgentRubberbanding))]
 [DisallowMultipleComponent]
@@ -8,7 +9,7 @@ public class PlayerNavMeshMovement : NavMeshMovement
 {
     public enum MovementMode
     {
-        Classic,   // your original: WASD + Click-to-Move
+        Classic,   // WASD + Click-to-Move
         Action,    // WASD only, chase camera + mouse look
         ClickOnly  // Click-to-Move only (no WASD)
     }
@@ -18,7 +19,7 @@ public class PlayerNavMeshMovement : NavMeshMovement
     public NetworkNavMeshAgentRubberbanding rubberbanding;
 
     [Header("Camera")]
-    public int mouseRotateButton = 1; 
+    public int mouseRotateButton = 1;
     public float cameraDistance = 20;
     public float minDistance = 3;
     public float maxDistance = 20;
@@ -50,6 +51,13 @@ public class PlayerNavMeshMovement : NavMeshMovement
     bool rotationInitialized;
     Camera cam;
 
+    // Cached components for performance
+    Animator[] animators;
+
+    static readonly int hashDirZ     = Animator.StringToHash("DirZ");
+    static readonly int hashTurn     = Animator.StringToHash("Turn");
+    static readonly int hashOnGround = Animator.StringToHash("OnGround");
+
     [Header("Movement Feel")]
     [Tooltip("Time to ramp from 0 to full WASD speed.")]
     public float accelSeconds = 0.5f; // tweak 0.35–0.45 for 'a touch slower'
@@ -62,28 +70,31 @@ public class PlayerNavMeshMovement : NavMeshMovement
     [Tooltip("Speed multiplier while sprinting.")]
     public float sprintSpeedMultiplier = 1.5f;
 
-    [Tooltip("How long sprint lasts (seconds).")]
-    public float sprintDuration = 6f;
+    [Tooltip("How long a sprint lasts (seconds).")]
+    public float sprintDuration = 3f;
 
-    [Tooltip("Cooldown between sprint uses (seconds).")]
-    public float sprintCooldown = 90f;
+    [Tooltip("How long before sprint can be used again (seconds).")]
+    public float sprintCooldown = 5f;
 
-    // runtime state
     bool isSprinting;
     float sprintEndTime;
     float nextSprintReadyTime;
 
+    // ------------------------------------------------------------
+    // Movement base overrides
+    // ------------------------------------------------------------
     public override void Reset()
     {
         if (isServer)
             rubberbanding.ResetMovement();
+
         agent.ResetMovement();
         currentSpeed = 0f;
         isSprinting = false;
         sprintEndTime = 0f;
         nextSprintReadyTime = Time.time;
-    } 
-    
+    }
+
     public override void Warp(Vector3 destination)
     {
         if (isServer)
@@ -102,25 +113,31 @@ public class PlayerNavMeshMovement : NavMeshMovement
 
     [ClientCallback]
     void UpdateAnimations()
-{
-    Vector3 localVel = transform.InverseTransformDirection(agent.velocity);
-    float dirZ = localVel.z;
-    float angularSpeed = 0f;
-    if (agent.velocity.sqrMagnitude < 0.001f)
     {
-        angularSpeed = Mathf.DeltaAngle(lastYaw, transform.eulerAngles.y) / Time.deltaTime;
-    }
-    lastYaw = transform.eulerAngles.y;
+        // Lazy cache so we only query child animators when needed
+        if (animators == null || animators.Length == 0)
+            animators = GetComponentsInChildren<Animator>();
 
-    foreach (Animator animator in GetComponentsInChildren<Animator>())
-    {
-        animator.SetFloat("DirZ", dirZ, directionDampening, Time.deltaTime);
-        animator.SetFloat("Turn", angularSpeed);
-        // Keep grounded param if you have jump states later
-        animator.SetBool("OnGround", true);
+        Vector3 localVel = transform.InverseTransformDirection(agent.velocity);
+        float dirZ = localVel.z;
+
+        float angularSpeed = 0f;
+        if (agent.velocity.sqrMagnitude < 0.001f)
+        {
+            angularSpeed = Mathf.DeltaAngle(lastYaw, transform.eulerAngles.y) / Time.deltaTime;
+        }
+        lastYaw = transform.eulerAngles.y;
+
+        foreach (Animator animator in animators)
+        {
+            animator.SetFloat(hashDirZ, dirZ, directionDampening, Time.deltaTime);
+            animator.SetFloat(hashTurn, angularSpeed);
+            // Keep grounded param if you have jump states later
+            animator.SetBool(hashOnGround, true);
+        }
     }
-}
-float lastYaw;
+    float lastYaw;
+
     void Update()
     {
         if (isLocalPlayer)
@@ -128,30 +145,36 @@ float lastYaw;
             // sprint input + timers (same for all modes)
             UpdateSprint();
 
+            // WASD only in Classic or Action
             if (player.IsMovementAllowed() &&
                 (movementMode == MovementMode.Classic || movementMode == MovementMode.Action))
             {
                 MoveWASD();
             }
 
+            // Click-to-move in Classic and ClickOnly
             if ((movementMode == MovementMode.Classic || movementMode == MovementMode.ClickOnly) &&
                 (player.IsMovementAllowed() || player.state == "CASTING" || player.state == "STUNNED"))
             {
                 MoveClick();
             }
         }
+
         UpdateAnimations();
     }
 
     [Client]
     void UpdateSprint()
     {
+        // expire current sprint
         if (isSprinting && Time.time >= sprintEndTime)
             isSprinting = false;
 
-        if (player.IsMovementAllowed() &&
-            Input.GetKeyDown(sprintKey) &&
-            Time.time >= nextSprintReadyTime)
+        // handle input for starting a new sprint
+        if (Input.GetKeyDown(sprintKey) &&
+            !isSprinting &&
+            Time.time >= nextSprintReadyTime &&
+            player.IsMovementAllowed())
         {
             isSprinting = true;
             sprintEndTime = Time.time + sprintDuration;
@@ -159,53 +182,31 @@ float lastYaw;
         }
     }
 
-    // ----------------- MOVEMENT -----------------
-
+    // === WASD mode switcher ===
     [Client]
     void MoveWASD()
     {
-        switch (movementMode)
-        {
-            case MovementMode.Classic:
-                MoveWASD_Classic();
-                break;
-            case MovementMode.Action:
-                MoveWASD_Action();
-                break;
-            default:
-                // ClickOnly: no WASD
-                currentSpeed = 0f;
-                agent.velocity = Vector3.zero;
-                break;
-        }
+        if (movementMode == MovementMode.Classic)
+            MoveWASD_Classic();
+        else if (movementMode == MovementMode.Action)
+            MoveWASD_Action();
     }
 
-    // === Classic WASD: camera-facing movement ===
+    // === Classic WASD: original uMMORPG style ===
     [Client]
     void MoveWASD_Classic()
     {
         float horizontal = Input.GetAxis("Horizontal");
         float vertical = Input.GetAxis("Vertical");
 
-        if (horizontal != 0 || vertical != 0)
+        Vector3 direction = new Vector3(horizontal, 0, vertical);
+        if (direction != Vector3.zero)
         {
-            Vector3 input = new Vector3(horizontal, 0, vertical);
-            if (input.magnitude > 1) input = input.normalized;
-
-            Vector3 angles = cam.transform.rotation.eulerAngles;
-            angles.x = 0;
-            Quaternion rot = Quaternion.Euler(angles);
-            Vector3 direction = rot * input;
-
-            Debug.DrawLine(transform.position, transform.position + direction, Color.green, 0, false);
             agent.ResetMovement();
 
             float targetSpeed = player.speed * (isSprinting ? sprintSpeedMultiplier : 1f);
-
             if (accelSeconds <= 0.001f)
-            {
-                currentSpeed = targetSpeed; // effectively instant if set to ~0
-            }
+                currentSpeed = targetSpeed;
             else
             {
                 float accelPerSec = targetSpeed / Mathf.Max(0.001f, accelSeconds);
@@ -220,6 +221,7 @@ float lastYaw;
         {
             // keep instant stop (no decel for now)
             currentSpeed = 0f;
+            agent.velocity = Vector3.zero;
         }
     }
 
@@ -228,7 +230,7 @@ float lastYaw;
     void MoveWASD_Action()
     {
         float horizontal = Input.GetAxis("Horizontal");
-        float vertical   = Input.GetAxis("Vertical");
+        float vertical = Input.GetAxis("Vertical");
 
         // A/D: turn character yaw
         if (Mathf.Abs(horizontal) > 0.01f)
@@ -279,25 +281,52 @@ float lastYaw;
             {
                 if (!hit.transform.GetComponent<Entity>())
                 {
-                    Vector3 bestDestination = NearestValidDestination(hit.point);                
+                    Vector3 bestDestination = NearestValidDestination(hit.point);
                     if (player.state == "CASTING" || player.state == "STUNNED")
                     {
                         player.pendingDestination = bestDestination;
-                        player.pendingDestinationValid = true;
                     }
-                    else Navigate(bestDestination, 0);
+                    else
+                    {
+                        agent.stoppingDistance = 0;
+                        agent.destination = bestDestination;
+                    }
+                }
+                else
+                {
+                    Entity e = hit.transform.GetComponent<Entity>();
+                    if (e != null)
+                        player.CmdSetTarget(e.netIdentity);
                 }
             }
         }
     }
 
-    // ----------------- CAMERA -----------------
+    // use NavMesh for find nearest walkable destination to a point
+    Vector3 NearestValidDestination(Vector3 destination)
+    {
+        NavMeshHit navHit;
+        if (NavMesh.SamplePosition(destination, out navHit, agent.radius * 2, NavMesh.AllAreas))
+        {
+            return navHit.position;
+        }
+        return transform.position;
+    }
+
+    void LookAtY(Vector3 position)
+    {
+        Vector3 direction = position - transform.position;
+        direction.y = 0;
+        if (direction != Vector3.zero)
+            transform.rotation = Quaternion.LookRotation(direction);
+    }
 
     void LateUpdate()
     {
         if (!isLocalPlayer) return;
 
-        cam = Camera.main;
+        if (cam == null)
+            cam = Camera.main;
         if (cam == null) return;
 
         Vector3 targetPos = transform.position + cameraOffset;
@@ -341,6 +370,7 @@ float lastYaw;
                         rotation.x -= mouseY * rotationSpeed;
                         rotation.x = Mathf.Clamp(rotation.x, xMinAngle, xMaxAngle);
 
+                        // WoW-style: rotate player with camera while mouse-look is held
                         transform.rotation = Quaternion.Euler(0f, rotation.y, 0f);
                     }
                     else
@@ -378,12 +408,9 @@ float lastYaw;
                 cam.transform.rotation = Quaternion.Euler(new Vector3(45, 0, 0));
             }
 
-            float speed = Input.mousePresent ? zoomSpeedMouse : zoomSpeedTouch;
-            float step = Utils.GetZoomUniversal() * speed;
-            const float camRadius = 0.40f;  // camera collision radius
-            const float camPadding = 0.05f;  // small air gap to avoid z-fighting
-            float minAllowed = Mathf.Max(minDistance, camRadius + camPadding);
-            cameraDistance = Mathf.Clamp(cameraDistance - step, minAllowed, maxDistance);
+            // Mouse wheel zoom
+            float step = Utils.GetZoomUniversal() * zoomSpeedMouse;
+            cameraDistance = Mathf.Clamp(cameraDistance - step, minDistance, maxDistance);
         }
         else
         {
@@ -395,7 +422,9 @@ float lastYaw;
             }
         }
 
-        Vector3 desiredPos = targetPos - (cam.transform.rotation * Vector3.forward * cameraDistance);
+        Vector3 offsetToCam = -cam.transform.forward * cameraDistance;
+        Vector3 desiredPos = targetPos + offsetToCam;
+
         const float sphereRadius = 0.40f;  // keep in sync with camRadius above
         const float spherePadding = 0.05f;
 
@@ -405,11 +434,15 @@ float lastYaw;
         if (dist > 0.001f)
         {
             Vector3 dir = toCam / dist;
+
             if (Physics.SphereCast(targetPos, sphereRadius, dir, out RaycastHit hit, dist,
                                    viewBlockingLayers, QueryTriggerInteraction.Ignore))
             {
                 float safeDist = Mathf.Max(0f, hit.distance - sphereRadius - spherePadding);
                 cam.transform.position = targetPos + dir * safeDist;
+
+                if (cam.transform.position.y < targetPos.y)
+                    cam.transform.position = new Vector3(cam.transform.position.x, targetPos.y, cam.transform.position.z);
             }
             else
             {
@@ -421,7 +454,7 @@ float lastYaw;
             {
                 if (Physics.SphereCast(cam.transform.position + dir * 0.01f, sphereRadius, -dir,
                                        out RaycastHit backHit, dist, viewBlockingLayers,
-                                       QueryTriggerInteraction.Ignore))
+                                           QueryTriggerInteraction.Ignore))
                 {
                     cam.transform.position = backHit.point + backHit.normal * (sphereRadius + spherePadding);
                 }
@@ -439,6 +472,6 @@ float lastYaw;
         Component[] components = GetComponents<Component>();
         if (Array.IndexOf(components, GetComponent<NetworkNavMeshAgentRubberbanding>()) >
             Array.IndexOf(components, this))
-            Debug.LogWarning(name + "'s NetworkNavMeshAgentRubberbanding component is below the PlayerNavMeshMovement component. Please drag it above the Player component in the Inspector, otherwise there might be WASD movement issues due to the Update order.");
+            Debug.LogWarning(name + "'s NetworkNavMeshAgentRubbe... there might be WASD movement issues due to the Update order.");
     }
 }
