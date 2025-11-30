@@ -53,6 +53,7 @@ public class PlayerNavMeshMovement : NavMeshMovement
     [Header("Movement Feel")]
     [Tooltip("Time to ramp from 0 to full WASD speed.")]
     public float accelSeconds = 0.5f; // tweak 0.35–0.45 for 'a touch slower'
+    public float decelSeconds = 0.25f; // currently not used
     float currentSpeed = 0f; // runtime
 
     [Header("Sprint")]
@@ -77,8 +78,6 @@ public class PlayerNavMeshMovement : NavMeshMovement
         if (isServer)
             rubberbanding.ResetMovement();
         agent.ResetMovement();
-
-        // safe client-side resets
         currentSpeed = 0f;
         isSprinting = false;
         sprintEndTime = 0f;
@@ -103,14 +102,25 @@ public class PlayerNavMeshMovement : NavMeshMovement
 
     [ClientCallback]
     void UpdateAnimations()
+{
+    Vector3 localVel = transform.InverseTransformDirection(agent.velocity);
+    float dirZ = localVel.z;
+    float angularSpeed = 0f;
+    if (agent.velocity.sqrMagnitude < 0.001f)
     {
-        foreach (Animator animator in GetComponentsInChildren<Animator>())
-        {
-            animator.SetFloat("DirZ", agent.velocity.magnitude, directionDampening, Time.deltaTime); 
-            animator.SetBool("OnGround", true); 
-        }
+        angularSpeed = Mathf.DeltaAngle(lastYaw, transform.eulerAngles.y) / Time.deltaTime;
     }
+    lastYaw = transform.eulerAngles.y;
 
+    foreach (Animator animator in GetComponentsInChildren<Animator>())
+    {
+        animator.SetFloat("DirZ", dirZ, directionDampening, Time.deltaTime);
+        animator.SetFloat("Turn", angularSpeed);
+        // Keep grounded param if you have jump states later
+        animator.SetBool("OnGround", true);
+    }
+}
+float lastYaw;
     void Update()
     {
         if (isLocalPlayer)
@@ -118,14 +128,12 @@ public class PlayerNavMeshMovement : NavMeshMovement
             // sprint input + timers (same for all modes)
             UpdateSprint();
 
-            // WASD only in Classic or Action
             if (player.IsMovementAllowed() &&
                 (movementMode == MovementMode.Classic || movementMode == MovementMode.Action))
             {
                 MoveWASD();
             }
 
-            // Click-to-move in Classic and ClickOnly
             if ((movementMode == MovementMode.Classic || movementMode == MovementMode.ClickOnly) &&
                 (player.IsMovementAllowed() || player.state == "CASTING" || player.state == "STUNNED"))
             {
@@ -138,19 +146,15 @@ public class PlayerNavMeshMovement : NavMeshMovement
     [Client]
     void UpdateSprint()
     {
-        // expire current sprint
         if (isSprinting && Time.time >= sprintEndTime)
             isSprinting = false;
 
-        // try to start a new sprint
         if (player.IsMovementAllowed() &&
             Input.GetKeyDown(sprintKey) &&
             Time.time >= nextSprintReadyTime)
         {
             isSprinting = true;
             sprintEndTime = Time.time + sprintDuration;
-
-            // 90s between uses (from activation)
             nextSprintReadyTime = Time.time + sprintCooldown;
         }
     }
@@ -176,7 +180,7 @@ public class PlayerNavMeshMovement : NavMeshMovement
         }
     }
 
-    // === Classic WASD: EXACTLY your original implementation ===
+    // === Classic WASD: camera-facing movement ===
     [Client]
     void MoveWASD_Classic()
     {
@@ -248,13 +252,8 @@ public class PlayerNavMeshMovement : NavMeshMovement
                 float accelPerSec = targetSpeed / Mathf.Max(0.001f, accelSeconds);
                 currentSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, accelPerSec * Time.deltaTime);
             }
-
-            // NavMeshAgent rotation is OFF in Action mode; we fully control facing.
             agent.velocity = moveDir.normalized * currentSpeed;
-
-            // S = backpedal, always face forward; no spin / jitter
             LookAtY(transform.position + transform.forward);
-
             player.useSkillWhenCloser = -1;
         }
         else
@@ -341,6 +340,8 @@ public class PlayerNavMeshMovement : NavMeshMovement
                         rotation.y += mouseX * rotationSpeed;
                         rotation.x -= mouseY * rotationSpeed;
                         rotation.x = Mathf.Clamp(rotation.x, xMinAngle, xMaxAngle);
+
+                        transform.rotation = Quaternion.Euler(0f, rotation.y, 0f);
                     }
                     else
                     {
