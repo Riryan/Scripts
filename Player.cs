@@ -92,6 +92,15 @@ public partial class Player : Entity
     public LayerMask worldInteractionLayers = ~0;
     public readonly SyncList<ItemSlot> warehouseSlots = new SyncList<ItemSlot>();
 
+    [Header("Action Combat")]
+    [Tooltip("If false, Action-mode mouse attack is completely disabled.")]
+    public bool actionCombatEnabled = false;
+    [Tooltip("Key used for default attack when in Action movement mode.")]
+    public KeyCode actionAttackKey = KeyCode.Mouse0;
+
+    [Tooltip("How far the center-screen ray can look for a target.")]
+    public float actionAttackRayDistance = 50f;
+
     [Tooltip("Being stunned interrupts the cast. Enable this option to continue the cast afterwards.")]
     public bool continueCastAfterStunned = true;
 
@@ -222,7 +231,18 @@ public partial class Player : Entity
 
         interactable.OnInteractServer(this);
     }
-    
+    // --- CENTRALIZED CLIENT TARGETING HELPER ------------------------------
+    // Any system (click, action combat, E-interact, etc.) should use this
+    // so the Target UI always sees a consistent 'target' value.
+    [Client]
+    public void ClientSetEntityTarget(Entity e)
+    {
+        if (!isLocalPlayer) return;
+        if (e == null || e == this) return;
+        if (e.netIdentity == null) return;
+
+        CmdSetTarget(e.netIdentity);
+    }
     [Server]
     string UpdateServer_IDLE()
     {
@@ -637,7 +657,7 @@ public partial class Player : Entity
         }
         if (EventMoveStart())
         {
-            Debug.LogWarning("Player " + name + " moved while dead. This should not happen.");
+            //Debug.LogWarning("Player " + name + " moved while dead. This should not happen.");
             return "DEAD";
         }
         if (EventMoveEnd()) {} 
@@ -669,6 +689,7 @@ public partial class Player : Entity
         return "IDLE";
     }
     // Trigger the same interaction pipeline as double-clicking a target.
+    // Trigger the same interaction pipeline as double-clicking a target.
     [Client]
     void TryInteractWithTarget()
     {
@@ -681,7 +702,7 @@ public partial class Player : Entity
               state == "STUNNED"))
             return;
 
-        // 1) If we have an Entity target (monster, NPC, player, etc.), use the existing logic.
+        // 1) If we already have an Entity target, use the original logic.
         if (target != null && target != this)
         {
             // Cancel any pending "use skill when closer" just like before
@@ -692,89 +713,94 @@ public partial class Player : Entity
             return;
         }
 
-// 2) No Entity target: try a world interaction (Tombstones, doors, harvest nodes, etc.)
-// We mirror the same idea as UI_InteractionPrompt: pick the "best" InteractionTarget
-// around the player using an OverlapSphere, so terrain/camera occlusion doesn't break it.
-    float range = interactionRange;
+        // 2) No Entity target: try a world interaction (Tombstones, doors, mobs with InteractionTarget, etc.)
+        float range = interactionRange;
 
-    // Origin: a bit above the player's position (chest height)
-    Vector3 origin = transform.position + Vector3.up * 1.2f;
+        // Origin: a bit above the player's position (chest height)
+        Vector3 origin = transform.position + Vector3.up * 1.2f;
 
-    // Layer mask: configured in inspector, and ignore our own layer
-    int mask = worldInteractionLayers;
-    mask &= ~(1 << gameObject.layer);
+        // Layer mask: configured in inspector, and ignore our own layer
+        int mask = worldInteractionLayers;
+        mask &= ~(1 << gameObject.layer);
 
-    // Find all colliders in range on the allowed layers
-    Collider[] hits = Physics.OverlapSphere(origin, range, mask, QueryTriggerInteraction.Collide);
-    if (hits == null || hits.Length == 0)
-        return;
+        // Find all colliders in range on the allowed layers
+        Collider[] hits = Physics.OverlapSphere(origin, range, mask, QueryTriggerInteraction.Collide);
+        if (hits == null || hits.Length == 0)
+            return;
 
-    // Direction we consider "forward": prefer camera forward, fall back to player forward
-    Vector3 fwd;
-    Camera cam = Camera.main;
-    if (cam != null)
-        fwd = cam.transform.forward;
-    else
-        fwd = transform.forward;
+        // Direction we consider "forward": prefer camera forward, fall back to player forward
+        Vector3 fwd;
+        Camera cam = Camera.main;
+        if (cam != null)
+            fwd = cam.transform.forward;
+        else
+            fwd = transform.forward;
 
-    fwd.y = 0f;
-    if (fwd.sqrMagnitude < 0.0001f)
-        fwd = Vector3.forward;
-    fwd.Normalize();
+        fwd.y = 0f;
+        if (fwd.sqrMagnitude < 0.0001f)
+            fwd = Vector3.forward;
+        fwd.Normalize();
 
-    // Choose the "best" target by angle+distance (same idea as UI_InteractionPrompt)
-    InteractionTarget best = null;
-    float bestScore = 0f;
+        // Choose the "best" target by angle+distance (same idea as UI_InteractionPrompt)
+        InteractionTarget best = null;
+        float bestScore = 0f;
 
-    foreach (var col in hits)
-    {
-        if (col == null) continue;
-
-        InteractionTarget t = col.GetComponentInParent<InteractionTarget>();
-        if (t == null) continue;
-        if (!t.IsInRange(this)) continue;
-
-        Vector3 to = t.transform.position - transform.position;
-        float dist = new Vector2(to.x, to.z).magnitude;
-        if (dist < 0.01f) dist = 0.01f;
-
-        Vector3 toFlat = new Vector3(to.x, 0f, to.z).normalized;
-        float dot = Mathf.Clamp01(Vector3.Dot(fwd, toFlat));
-
-        // score = angle alignment / (1 + distance)
-        float score = dot / (1f + dist);
-
-        if (score > bestScore)
+        foreach (var col in hits)
         {
-            bestScore = score;
-            best = t;
+            if (col == null) continue;
+
+            InteractionTarget t = col.GetComponentInParent<InteractionTarget>();
+            if (t == null) continue;
+            if (!t.IsInRange(this)) continue;
+
+            Vector3 to = t.transform.position - transform.position;
+            float dist = new Vector2(to.x, to.z).magnitude;
+            if (dist < 0.01f) dist = 0.01f;
+
+            Vector3 toFlat = new Vector3(to.x, 0f, to.z).normalized;
+            float dot = Mathf.Clamp01(Vector3.Dot(fwd, toFlat));
+
+            // score = angle alignment / (1 + distance)
+            float score = dot / (1f + dist);
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                best = t;
+            }
         }
-    }
 
-    if (best == null)
-        return;
+        if (best == null)
+            return;
 
-    Debug.Log($"[InteractionDebug] World interact with {best.name} (score={bestScore:0.00})");
-
-    if (best.serverAuthoritative)
-    {
-        if (best.Identity != null)
+        // if this InteractionTarget belongs to an Entity (NPC / monster / player),
+        // also set it as our target so the Target UI shows up.
+        Entity bestEntity = best.GetComponentInParent<Entity>();
+        if (bestEntity != null && bestEntity != this)
         {
-            CmdInteractWorld(best.Identity);
+            ClientSetEntityTarget(bestEntity);
+        }
+
+        if (best.serverAuthoritative)
+        {
+            if (best.Identity != null)
+            {
+                CmdInteractWorld(best.Identity);
+            }
+            else
+            {
+                Debug.LogWarning($"[InteractionDebug] {best.name} is serverAuthoritative but has no NetworkIdentity.");
+            }
         }
         else
         {
-            Debug.LogWarning($"[InteractionDebug] {best.name} is serverAuthoritative but has no NetworkIdentity.");
-        }
-    }
-    else
-    {
-        if (best.TryGetInteractable(out var interactable))
+            if (best.TryGetInteractable(out var interactable))
             {
                 interactable.OnInteractClient(this);
             }
         }
     }
+
     
     [Client]
     protected override void UpdateClient()
@@ -793,11 +819,9 @@ public partial class Player : Entity
                 // primary interact (E) on current target
                 if (Input.GetKeyDown(interactKey))
                 {
-                    Debug.Log("[InteractionDebug] E pressed (state=" + state + ")");
                     TryInteractWithTarget();
                 }
-
-                // auto use skill when closer
+                HandleActionModeDefaultAttack();
                 if (useSkillWhenCloser != -1)
                 {
                     if (CanAttack(target))
@@ -856,7 +880,72 @@ public partial class Player : Entity
         else if (state == "DEAD") {}
         else Debug.LogError("invalid state:" + state);
     }
-    
+    [Client]
+    void HandleActionModeDefaultAttack()
+    {
+        if (!actionCombatEnabled) return;
+        if (!isLocalPlayer) return;
+
+        // we only do this if we are using PlayerNavMeshMovement in Action mode
+        var navMove = movement as PlayerNavMeshMovement;
+        if (navMove == null) return;
+        if (navMove.movementMode != PlayerNavMeshMovement.MovementMode.Action) return;
+
+        // don't fire through UI
+        if (Utils.IsCursorOverUserInterface()) return;
+
+        // only on button down
+        if (!Input.GetKeyDown(actionAttackKey)) return;
+
+        // 1) Try to pick a target in front of the camera (center of screen)
+        Camera cam = Camera.main;
+        if (cam != null)
+        {
+            Vector3 center = new Vector3(Screen.width * 0.5f, Screen.height * 0.5f, 0);
+            Ray ray = cam.ScreenPointToRay(center);
+
+            if (Physics.Raycast(ray, out RaycastHit hit, actionAttackRayDistance))
+            {
+                Entity e = hit.collider.GetComponentInParent<Entity>();
+                if (e != null && e != this)
+                {
+                    // 🔹 NEW: route all targeting through the helper so Target UI always updates
+                    ClientSetEntityTarget(e);
+                }
+            }
+        }
+
+        // 2) Use the SAME default-attack selection logic as OnSkillCastFinished
+
+        var ps = (PlayerSkills)skills;
+        if (ps == null || ps.skills.Count == 0)
+            return;
+
+        int idx = 0; // safe fallback: unarmed default attack (skills[0])
+
+        // if weapon / system filled skillbar slot 1 (index 0), prefer that
+        if (skillbar != null &&
+            skillbar.slots != null &&
+            skillbar.slots.Length > 0)
+        {
+            string basicName = skillbar.slots[0].reference;
+            if (!string.IsNullOrWhiteSpace(basicName))
+            {
+                for (int i = 0; i < ps.skills.Count; ++i)
+                {
+                    if (ps.skills[i].name == basicName)
+                    {
+                        idx = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // this calls into your existing default combat system
+        ps.TryUse(idx);
+    }
+
     protected override void UpdateOverlays()
     {
         base.UpdateOverlays();
