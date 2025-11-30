@@ -23,7 +23,7 @@ public class ChannelInfo
 [RequireComponent(typeof(PlayerGuild))]
 [RequireComponent(typeof(PlayerParty))]
 [DisallowMultipleComponent]
-public class PlayerChat : NetworkBehaviour
+public partial class PlayerChat : NetworkBehaviour
 {
     [Header("Components")]
     public PlayerGuild guild;

@@ -552,13 +552,9 @@ void OnServerCharacterSelect(NetworkConnectionToClient conn, CharacterSelectMsg 
         ServerSendError(conn, "invalid character index", false);
         return;
     }
-
     string characterName = characters[message.index];
-
     try
     {
-        Debug.Log($"[OnServerCharacterSelect] account='{account}' index={message.index} name='{characterName}'");
-
         GameObject go = Database.singleton.CharacterLoad(characterName, playerClasses, false);
         if (go == null)
         {
@@ -571,8 +567,6 @@ void OnServerCharacterSelect(NetworkConnectionToClient conn, CharacterSelectMsg 
         NetworkServer.AddPlayerForConnection(conn, go);
         onServerCharacterSelect.Invoke(account, go, conn, message);
         lobby.Remove(conn);
-
-        
     }
     catch (Exception ex)
     {
@@ -604,7 +598,6 @@ void OnServerCharacterSelect(NetworkConnectionToClient conn, CharacterSelectMsg 
         }
         else
         {
-            //Debug.Log("CharacterDelete: not in lobby: " + conn);
             ServerSendError(conn, "CharacterDelete: not in lobby", true);
         }
     } 
@@ -626,7 +619,7 @@ public void ServerDebugSendZoneTransfer(NetworkConnectionToClient conn, string t
 
     conn.Send(new ZoneTransferMsg
     {
-        targetZoneId    = "DebugZone",
+        targetZoneId    = "ZoneDemo",
         targetHost      = "",
         targetPort      = 0,
         transferToken   = token,
@@ -640,9 +633,7 @@ public void ServerDebugSendZoneTransfer(NetworkConnectionToClient conn, string t
 
 IEnumerator DelayedDisconnect(NetworkConnectionToClient conn)
 {
-    // give Mirror/KCP one frame to flush the ZoneTransferMsg
     yield return null;
-
     if (conn != null && conn.connectionId != -1)
         conn.Disconnect();
 }
@@ -651,38 +642,19 @@ IEnumerator DelayedDisconnect(NetworkConnectionToClient conn)
     [ContextMenu("DEBUG: Zone Transfer local player")]
     void Debug_ZoneTransferLocalPlayer()
     {
-        if (!NetworkServer.active)
-        {
-            Debug.LogWarning("Debug_ZoneTransferLocalPlayer: server not active.");
-            return;
-        }
-        if (NetworkClient.localPlayer == null)
-        {
-            Debug.LogWarning("Debug_ZoneTransferLocalPlayer: no local player.");
-            return;
-        }
+        if (!NetworkServer.active) { return; }
 
-        // On host, the *server* connection for this player is on the NetworkIdentity.connectionToClient
+        if (NetworkClient.localPlayer == null) { return; }
+
         NetworkIdentity identity = NetworkClient.localPlayer.GetComponent<NetworkIdentity>();
-        if (identity == null || identity.connectionToClient == null)
-        {
-            Debug.LogWarning("Debug_ZoneTransferLocalPlayer: local player has no server-side connectionToClient.");
-            return;
-        }
+        if (identity == null || identity.connectionToClient == null) { return; }
 
         NetworkConnectionToClient conn = identity.connectionToClient as NetworkConnectionToClient;
-        if (conn == null)
-        {
-            Debug.LogWarning("Debug_ZoneTransferLocalPlayer: connectionToClient is not a NetworkConnectionToClient.");
-            return;
-        }
+        if (conn == null) { return; }
 
         ServerDebugSendZoneTransfer(conn);
     }
 #endif
-
-
-    // ──────────────────────────────────────────────────────────────────────────
 
     void SavePlayers()
     {
@@ -750,7 +722,6 @@ public override void OnClientDisconnect()
     }
     else
     {
-        // Normal disconnect path
         state = NetworkState.Offline;
         onClientDisconnect.Invoke(NetworkClient.connection);
     }
@@ -777,7 +748,6 @@ public override void OnClientDisconnect()
     {
         if (!clientFpsOverrideEnabled) return;
 
-        // optional CLI overrides
         if (clientAllowCommandLineOverride)
         {
             if (TryGetArgInt("-client.maxfps", out int cliFps)) clientFpsMode = ClientFpsMode.TargetFps; // enforce target mode
@@ -828,7 +798,6 @@ public override void OnClientDisconnect()
                SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null;
 #endif
     }
-
 
     public override void OnValidate()
     {
