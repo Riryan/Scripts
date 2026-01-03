@@ -239,6 +239,16 @@ namespace uMMORPG
             // note: automatically creates database file if not created yet
             connection = new SQLiteConnection(path);
 
+            // --- SQLite WAL + performance pragmas (server only) ---
+            connection.ExecuteScalar<string>("PRAGMA journal_mode=WAL;");
+            connection.ExecuteScalar<string>("PRAGMA synchronous=NORMAL;");
+            connection.ExecuteScalar<string>("PRAGMA temp_store=MEMORY;");
+            connection.ExecuteScalar<string>("PRAGMA busy_timeout=3000;");
+            connection.ExecuteScalar<string>("PRAGMA cache_size=-200000;");
+
+            // ~200 MB cache (negative = KB units)
+            connection.Execute("PRAGMA cache_size=-200000;");
+
             // create tables if they don't exist yet or were deleted
             connection.CreateTable<accounts>();
             connection.CreateTable<characters>();
