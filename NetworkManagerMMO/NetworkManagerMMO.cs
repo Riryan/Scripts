@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using Mirror;
 using UnityEngine.Events;
+using System.Collections;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -557,12 +558,46 @@ namespace uMMORPG
         // each player seperately then it could happen that two players trade items
         // and only one of them is saved before a server crash - hence causing item
         // duplicates.
-        void SavePlayers()
+        //void SavePlayers()
+        //{
+        //    Database.singleton.CharacterSaveMany(Player.onlinePlayers.Values);
+        //    if (Player.onlinePlayers.Count > 0)
+        //        Debug.Log("saved " + Player.onlinePlayers.Count + " player(s)");
+        //}
+void SavePlayers()
+{
+    if (Player.onlinePlayers.Count == 0)
+        return;
+
+    StartCoroutine(SavePlayersStaggered());
+}
+
+IEnumerator SavePlayersStaggered()
+{
+    var players = Player.onlinePlayers.Values;
+
+    // one transaction, MMO-safe
+    Database.singleton.connection.BeginTransaction();
+
+    foreach (Player player in players)
+    {
+        if (player != null)
         {
-            Database.singleton.CharacterSaveMany(Player.onlinePlayers.Values);
-            if (Player.onlinePlayers.Count > 0)
-                Debug.Log("saved " + Player.onlinePlayers.Count + " player(s)");
+            Database.singleton.CharacterSave(
+                player,
+                online: true,
+                useTransaction: false
+            );
         }
+
+        // stagger: 1 player per frame
+        yield return null;
+    }
+
+    Database.singleton.connection.Commit();
+
+    Debug.Log($"[SAVE] Staggered save complete ({players.Count} players)");
+}
 
         // stop/disconnect /////////////////////////////////////////////////////////
         // called on the server when a client disconnects
