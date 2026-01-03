@@ -1,0 +1,31 @@
+Thank you for your purchase. 
+Our other projects you can see https://assetstore.unity.com/publishers/37837
+We are waiting for your feedback on asset store
+Best wishes the development team GFF
+Support us on patreon  https://www.patreon.com/GameFunSPB
+Contacts : email "GameFunSPB@gmail.com"; Discord  "GameFunSPB#2037"
+
+
+Addon name : Character Info Extended
+Addon version : 1.0
+Date of creation / editing 24.03.2025
+Require Components : none
+Recommended Components : none
+Compatible projects : uMMORPG Remastered 2.43, uMMORPG 2d Remastered 2.14
+Recommendations : Test the addon on a clean version uMMORPG without changes.
+Recommended Unity version : Unity 6 (6000.0.42)
+Link :
+
+
+All Addons for uMMORPG Remastered : https://u3d.as/2AEs
+All Addons for uMMORPG 2D Remastered : https://u3d.as/2FJ8
+All Addons for uSurvival : https://u3d.as/38bS
+
+
+									  Installation and Configuration
+
+1. Disable or Delete the "CharacterInfo" from Canvas
+
+2. Drag the "GFF CharacterInfo.prefab" from (Addons\GFF Character Info Extended\Prefabs\) to the canvas element so canvas is the parent.
+
+3. Select the "Shortcuts" object in Canvas. In the inspector Drag in "Character Info Panel" the object "CharacterInfoPanel" in Canvas\GFF CharacterInfo Extended\CharacterInfoPanel

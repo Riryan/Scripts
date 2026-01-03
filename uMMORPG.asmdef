@@ -1,0 +1,21 @@
+{
+    "name": "uMMORPG",
+    "rootNamespace": "",
+    "references": [
+        "Unity.TextMeshPro",
+        "SQLite-net",
+        "Mirror",
+        "Mirror.Components",
+        "Controller2k",
+        "Unity.AI.Navigation"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

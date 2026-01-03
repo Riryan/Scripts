@@ -1,0 +1,66 @@
+Thank you for your purchase. 
+Our other projects you can see https://assetstore.unity.com/publishers/37837
+We are waiting for your feedback on asset store
+Best wishes the development team GFF
+Support us on patreon  https://www.patreon.com/GameFunSPB
+Contacts : email "GameFunSPB@gmail.com"; Discord  "GameFunSPB#2037"
+
+
+Addon name : Combat Skills
+Addon version : 1.8
+Date of creation / editing 24.03.2025
+Require Components : Addons Core (EventsPartial, WeaponItemPartial), Character Info Extended
+Recommended Components : Extended Attributes, Stamina, Improved Crit & Block & Stun
+Compatible projects : uMMORPG Remastered 2.43, uMMORPG 2d Remastered 2.14
+Recommendations : Test the addon on a clean version uMMORPG without changes.
+Recommended Unity version : Unity 6 (6000.0.42)
+Link : http://u3d.as/1PQL
+
+
+All Addons for uMMORPG Remastered : https://u3d.as/2AEs
+All Addons for uMMORPG 2D Remastered : https://u3d.as/2FJ8
+All Addons for uSurvival : https://u3d.as/38bS
+
+
+                              Installation and Configuration
+
+1. Edit the "EquipmentItem.cs"  Script in “Assets/uMMORPG/Scripts/ScriptableItems/" 
+   a)     Find line       public class EquipmentItem : UsableItem
+          change to       public partial class EquipmentItem : UsableItem
+
+   b)   Before line       return tip.ToString();
+           add line       Utils.InvokeMany(typeof(EquipmentItem), this, "ToolTip_", tip);
+
+
+2. Edit the "WeaponItem.cs"  Script in “/Scripts/" 
+   a)     find line       public class WeaponItem : EquipmentItem
+          change to       public partial class WeaponItem : EquipmentItem
+
+
+3. Edit the "Combat.cs"  Script in “Assets/uMMORPG/Scripts/" 
+   a)   before line       victim.health.current -= damageDealt;
+           add line       if (entity is Player player) player.combatSkills.HitEnemy(victim, damageDealt);
+
+   b)   before line       onDamageDealtTo.Invoke(victim);
+           add line       if (victim is Player targetPlayer) targetPlayer.combatSkills.ReceivedDamage(damageType);
+
+
+4. Edit all player prefabs (uMMORPG\Prefabs\Entities\Players\)
+   a) add scripts "PlayerCombatSkills"
+   b) in Inspector in script "PlayerCombatSkills" in "Skill Templates" add Combat skiils from (Addons\GFF Character Characteristics - Combat Skills\Resources\)
+
+
+5. All items in folder "Assets/uMMORPG/Resources/Equipment/" have characteristics added
+  * you need to fill them for weapons "Weapon type"
+
+
+6. Configure addon GFF Character Info Extended
+
+
+
+
+Melee - add Sp and Damage
+Range - add Sp and Damage
+Force - add Fp and Damage
+Defense - add Hp and Defense
+Shield - add Block Chance
