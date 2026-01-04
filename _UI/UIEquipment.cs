@@ -16,52 +16,61 @@ namespace uMMORPG
         public Color lowDurabilityColor = Color.magenta;
         [Range(0.01f, 0.99f)] public float lowDurabilityThreshold = 0.1f;
 
+        // ------------------------------------------------------------
+        // determine how many equipment slots should be visible in UI
+        // (hide customization slots like __Hair, __Eyes, etc.)
+        // ------------------------------------------------------------
+        int GetVisibleSlotCount(PlayerEquipment equipment)
+        {
+            for (int i = 0; i < equipment.slotInfo.Length; i++)
+            {
+                if (equipment.slotInfo[i].requiredCategory.StartsWith("__"))
+                    return i;
+            }
+            return equipment.slots.Count;
+        }
+
         void Update()
         {
             Player player = Player.localPlayer;
             if (player)
             {
-                // hotkey (not while typing in chat, etc.)
                 if (Input.GetKeyDown(hotKey) && !UIUtils.AnyInputActive())
                     panel.SetActive(!panel.activeSelf);
 
-                // only enable avatar camera while panel is active.
-                // no need to render while the window is hidden!
-                ((PlayerEquipment)player.equipment).avatarCamera.enabled = panel.activeSelf;
+                PlayerEquipment equipment = (PlayerEquipment)player.equipment;
+                equipment.avatarCamera.enabled = panel.activeSelf;
 
-                // only update the panel if it's active
                 if (panel.activeSelf)
                 {
-                    // instantiate/destroy enough slots
-                    UIUtils.BalancePrefabs(slotPrefab.gameObject, player.equipment.slots.Count, content);
+                    int visibleSlots = GetVisibleSlotCount(equipment);
 
-                    // refresh all
-                    for (int i = 0; i < player.equipment.slots.Count; ++i)
+                    UIUtils.BalancePrefabs(
+                        slotPrefab.gameObject,
+                        visibleSlots,
+                        content
+                    );
+
+                    for (int i = 0; i < visibleSlots; ++i)
                     {
                         UIEquipmentSlot slot = content.GetChild(i).GetComponent<UIEquipmentSlot>();
-                        slot.dragAndDropable.name = i.ToString(); // drag and drop slot
-                        ItemSlot itemSlot = player.equipment.slots[i];
+                        slot.dragAndDropable.name = i.ToString();
 
-                        // set category overlay in any case. we use the last noun in the
-                        // category string, for example EquipmentWeaponBow => Bow
-                        // (disabled if no category, e.g. for archer shield slot)
-                        EquipmentInfo slotInfo = ((PlayerEquipment)player.equipment).slotInfo[i];
+                        ItemSlot itemSlot = equipment.slots[i];
+                        EquipmentInfo slotInfo = equipment.slotInfo[i];
+
                         slot.categoryOverlay.SetActive(slotInfo.requiredCategory != "");
                         string overlay = Utils.ParseLastNoun(slotInfo.requiredCategory);
                         slot.categoryText.text = overlay != "" ? overlay : "?";
 
                         if (itemSlot.amount > 0)
                         {
-                            // refresh valid item
-
-                            // only build tooltip while it's actually shown. this
-                            // avoids MASSIVE amounts of StringBuilder allocations.
                             slot.tooltip.enabled = true;
                             if (slot.tooltip.IsVisible())
                                 slot.tooltip.text = itemSlot.ToolTip();
+
                             slot.dragAndDropable.dragable = true;
 
-                            // use durability colors?
                             if (itemSlot.item.maxDurability > 0)
                             {
                                 if (itemSlot.item.durability == 0)
@@ -71,22 +80,23 @@ namespace uMMORPG
                                 else
                                     slot.image.color = Color.white;
                             }
-                            else slot.image.color = Color.white; // reset for no-durability items
+                            else slot.image.color = Color.white;
+
                             slot.image.sprite = itemSlot.item.image;
 
-                            // cooldown if usable item
                             if (itemSlot.item.data is UsableItem usable)
                             {
                                 float cooldown = player.GetItemCooldown(usable.cooldownCategory);
-                                slot.cooldownCircle.fillAmount = usable.cooldown > 0 ? cooldown / usable.cooldown : 0;
+                                slot.cooldownCircle.fillAmount =
+                                    usable.cooldown > 0 ? cooldown / usable.cooldown : 0;
                             }
                             else slot.cooldownCircle.fillAmount = 0;
+
                             slot.amountOverlay.SetActive(itemSlot.amount > 1);
                             slot.amountText.text = itemSlot.amount.ToString();
                         }
                         else
                         {
-                            // refresh invalid item
                             slot.tooltip.enabled = false;
                             slot.dragAndDropable.dragable = false;
                             slot.image.color = Color.clear;

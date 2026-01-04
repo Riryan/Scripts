@@ -17,6 +17,7 @@ namespace uMMORPG
     {
         public string name;
         public int classIndex;
+        public PlayerCustomizationData customization;
         public bool gameMaster; // only allowed if host connection!
     }
 

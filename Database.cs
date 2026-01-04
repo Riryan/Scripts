@@ -114,10 +114,7 @@ namespace uMMORPG
             public bool online { get; set; }
             public DateTime lastsaved { get; set; }
             public bool deleted { get; set; }
-            //public RaceList race { get; set; }
-            public string gender { get; set; }
-            public string specialisation1 { get; set; }
-            public string specialisation2 { get; set; }
+            public string customization { get; set; }
             
         }
         class character_inventory
@@ -538,7 +535,6 @@ namespace uMMORPG
             characters row = connection.FindWithQuery<characters>("SELECT * FROM characters WHERE name=? AND deleted=0", characterName);
             if (row != null)
             {
-                // instantiate based on the class name
                 Player prefab = prefabs.Find(p => p.name == row.classname);
                 if (prefab != null)
                 {
@@ -557,7 +553,7 @@ namespace uMMORPG
                     player.gold                                   = row.gold;
                     player.isGameMaster                           = row.gamemaster;
                     player.itemMall.coins                         = row.coins;
-
+                    player.customization = PlayerCustomizationData.Deserialize(row.customization);
                     // can the player's movement type spawn on the saved position?
                     // it might not be if we changed the terrain, or if the player
                     // logged out in an instanced dungeon that doesn't exist anymore
@@ -592,7 +588,7 @@ else
 }
 
 // INITIAL SPAWN: set transform directly (NO RPC, NO Warp)
-go.transform.position = spawnPosition;
+                    go.transform.position = spawnPosition;
 
                     LoadInventory(player.inventory);
                     LoadEquipment((PlayerEquipment)player.equipment);
@@ -761,46 +757,47 @@ go.transform.position = spawnPosition;
         }
 
         // adds or overwrites character data in the database
-        public void CharacterSave(Player player, bool online, bool useTransaction = true)
-        {
-            // only use a transaction if not called within SaveMany transaction
-            if (useTransaction) connection.BeginTransaction();
+public void CharacterSave(Player player, bool online, bool useTransaction = true)
+{
+    if (useTransaction) connection.BeginTransaction();
 
-            connection.InsertOrReplace(new characters{
-                name = player.name,
-                account = player.account,
-                classname = player.className,
-                x = player.transform.position.x,
-                y = player.transform.position.y,
-                z = player.transform.position.z,
-                level = player.level.current,
-                health = player.health.current,
-                mana = player.mana.current,
-                strength = player.strength.value,
-                intelligence = player.intelligence.value,
-                experience = player.experience.current,
-                skillExperience = ((PlayerSkills)player.skills).skillExperience,
-                gold = player.gold,
-                coins = player.itemMall.coins,
-                gamemaster = player.isGameMaster,
-                online = online,
-                lastsaved = DateTime.UtcNow
-            });
 
-            SaveInventory(player.inventory);
-            SaveEquipment((PlayerEquipment)player.equipment);
-            SaveItemCooldowns(player);
-            SaveSkills((PlayerSkills)player.skills);
-            SaveBuffs((PlayerSkills)player.skills);
-            SaveQuests(player.quests);
-            if (player.guild.InGuild())
-                SaveGuild(player.guild.guild, false); // TODO only if needs saving? but would be complicated
+    connection.InsertOrReplace(new characters{
+        name = player.name,
+        account = player.account,
+        classname = player.className,
+        x = player.transform.position.x,
+        y = player.transform.position.y,
+        z = player.transform.position.z,
+        level = player.level.current,
+        health = player.health.current,
+        mana = player.mana.current,
+        strength = player.strength.value,
+        intelligence = player.intelligence.value,
+        experience = player.experience.current,
+        skillExperience = ((PlayerSkills)player.skills).skillExperience,
+        gold = player.gold,
+        coins = player.itemMall.coins,
+        gamemaster = player.isGameMaster,
+        online = online,
+        customization = PlayerCustomizationData.Serialize(player.customization),
+        lastsaved = DateTime.UtcNow
+    });
 
-            // addon system hooks
-            onCharacterSave.Invoke(player);
+    SaveInventory(player.inventory);
+    SaveEquipment((PlayerEquipment)player.equipment);
+    SaveItemCooldowns(player);
+    SaveSkills((PlayerSkills)player.skills);
+    SaveBuffs((PlayerSkills)player.skills);
+    SaveQuests(player.quests);
+    if (player.guild.InGuild())
+        SaveGuild(player.guild.guild, false);
 
-            if (useTransaction) connection.Commit();
-        }
+    onCharacterSave.Invoke(player);
+
+    if (useTransaction) connection.Commit();
+}
+
 
         // save multiple characters at once (useful for ultra fast transactions)
         public void CharacterSaveMany(IEnumerable<Player> players, bool online = true)

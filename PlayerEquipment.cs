@@ -35,7 +35,16 @@ namespace uMMORPG
             new EquipmentInfo{requiredCategory="Shield", location=null, defaultItem=new ScriptableItemAndAmount()},
             new EquipmentInfo{requiredCategory="Shoulders", location=null, defaultItem=new ScriptableItemAndAmount()},
             new EquipmentInfo{requiredCategory="Hands", location=null, defaultItem=new ScriptableItemAndAmount()},
-            new EquipmentInfo{requiredCategory="Feet", location=null, defaultItem=new ScriptableItemAndAmount()}
+            new EquipmentInfo{requiredCategory="Feet", location=null, defaultItem=new ScriptableItemAndAmount()},
+            // hidden customization slots start here
+            new EquipmentInfo{requiredCategory="__Hair", location=null, defaultItem=new ScriptableItemAndAmount()},
+            new EquipmentInfo{requiredCategory="__Beard", location=null, defaultItem=new ScriptableItemAndAmount()},
+            new EquipmentInfo{requiredCategory="__Eyes", location=null, defaultItem=new ScriptableItemAndAmount()},
+            new EquipmentInfo{requiredCategory="__Face", location=null, defaultItem=new ScriptableItemAndAmount()},
+            new EquipmentInfo{requiredCategory="__Beard2", location=null, defaultItem=new ScriptableItemAndAmount()},
+            new EquipmentInfo{requiredCategory="__Ears", location=null, defaultItem=new ScriptableItemAndAmount()},
+            new EquipmentInfo{requiredCategory="__Brows", location=null, defaultItem=new ScriptableItemAndAmount()},
+            new EquipmentInfo{requiredCategory="__Other", location=null, defaultItem=new ScriptableItemAndAmount()},
         };
 
         // cached SkinnedMeshRenderer bones without equipment, by name
@@ -53,20 +62,24 @@ namespace uMMORPG
 
         public override void OnStartClient()
         {
-            // setup synclist callbacks on client. no need to update and show and
-            // animate equipment on server
-     #pragma warning disable CS0618
+            base.OnStartClient();
+        #pragma warning disable CS0618
             slots.Callback += OnEquipmentChanged;
-     #pragma warning restore CS0618
+        #pragma warning restore CS0618
 
-            // refresh all locations once (on synclist changed won't be called
-            // for initial lists)
-            // -> needs to happen before ProximityChecker's initial SetVis call,
-            //    otherwise we get a hidden character with visible equipment
-            //    (hence OnStartClient and not Start)
             for (int i = 0; i < slots.Count; ++i)
                 RefreshLocation(i);
+
+            // APPLY customization ONCE
+            PlayerCustomizationVisuals customizationVisuals = GetComponent<PlayerCustomizationVisuals>();
+
+            if (customizationVisuals != null)
+            {
+            customizationVisuals.Apply(player.customization);
+            customizationVisuals.RefreshSuppression(this);
+            }
         }
+
 
         void OnEquipmentChanged(SyncList<ItemSlot>.Operation op, int index, ItemSlot oldSlot, ItemSlot newSlot)
         {
@@ -155,7 +168,9 @@ namespace uMMORPG
                     }
                 }
             }
+            // ALWAYS do these
             GetComponent<PlayerMeshSwitcher>()?.RefreshMesh(index);
+            GetComponent<PlayerCustomizationVisuals>()?.RefreshSuppression(this);
         }
 
         // swap inventory & equipment slots to equip/unequip. used in multiple places
