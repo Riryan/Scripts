@@ -112,7 +112,7 @@ namespace uMMORPG
 
         void OnClientError(ErrorMsg message)
         {
-            Debug.Log("OnClientError: " + message.text);
+            //Debug.Log("OnClientError: " + message.text);
 
             uiPopup.Show(message.text);
             if (message.causesDisconnect)
@@ -214,7 +214,7 @@ namespace uMMORPG
         void OnClientCharactersAvailable(CharactersAvailableMsg message)
         {
             charactersAvailableMsg = message;
-            Debug.Log("characters available:" + charactersAvailableMsg.characters.Length);
+            //Debug.Log("characters available:" + charactersAvailableMsg.characters.Length);
             state = NetworkState.Lobby;
             ClearPreviews();
             for (int i = 0; i < charactersAvailableMsg.characters.Length; ++i)
@@ -344,13 +344,13 @@ namespace uMMORPG
                 }
                 else
                 {
-                    Debug.Log("invalid character index: " + account + " " + message.index);
+                    //Debug.Log("invalid character index: " + account + " " + message.index);
                     ServerSendError(conn, "invalid character index", false);
                 }
             }
             else
             {
-                Debug.Log("CharacterSelect: not in lobby" + conn);
+                //Debug.Log("CharacterSelect: not in lobby" + conn);
                 ServerSendError(conn, "CharacterSelect: not in lobby", true);
             }
         }
@@ -364,20 +364,20 @@ namespace uMMORPG
 
                 if (0 <= message.index && message.index < characters.Count)
                 {
-                    Debug.Log("delete character: " + characters[message.index]);
+                    //Debug.Log("delete character: " + characters[message.index]);
                     Database.singleton.CharacterDelete(characters[message.index]);
                     onServerCharacterDelete.Invoke(message);
                     conn.Send(MakeCharactersAvailableMessage(account));
                 }
                 else
                 {
-                    Debug.Log("invalid character index: " + account + " " + message.index);
+                    //Debug.Log("invalid character index: " + account + " " + message.index);
                     ServerSendError(conn, "invalid character index", false);
                 }
             }
             else
             {
-                Debug.Log("CharacterDelete: not in lobby: " + conn);
+                //Debug.Log("CharacterDelete: not in lobby: " + conn);
                 ServerSendError(conn, "CharacterDelete: not in lobby", true);
             }
         }
@@ -424,7 +424,7 @@ IEnumerator SavePlayersStaggered()
 
     Database.singleton.connection.Commit();
 
-    Debug.Log($"[SAVE] Staggered save complete ({players.Count} players)");
+    //Debug.Log($"[SAVE] Staggered save complete ({players.Count} players)");
 }
 
         public override void OnServerDisconnect(NetworkConnectionToClient conn)
@@ -446,7 +446,7 @@ IEnumerator SavePlayersStaggered()
             if (conn.identity != null)
             {
                 Database.singleton.CharacterSave(conn.identity.GetComponent<Player>(), false);
-                Debug.Log("saved:" + conn.identity.name);
+               // Debug.Log("saved:" + conn.identity.name);
             }
 
             onServerDisconnect.Invoke(conn);
@@ -458,7 +458,7 @@ IEnumerator SavePlayersStaggered()
 
         public override void OnClientDisconnect()
         {
-            Debug.Log("OnClientDisconnect");
+            //Debug.Log("OnClientDisconnect");
 
             Camera mainCamera = Camera.main;
             if (mainCamera.transform.parent != null)

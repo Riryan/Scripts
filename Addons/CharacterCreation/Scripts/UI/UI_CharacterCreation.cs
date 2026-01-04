@@ -7,9 +7,6 @@ using uMMORPG;
 
 public class UI_CharacterCreation : MonoBehaviour
 {
-    // =====================================================
-    // UI
-    // =====================================================
     [Header("Panels")]
     public GameObject panel;
     public GameObject centerPanel2;
@@ -26,15 +23,11 @@ public class UI_CharacterCreation : MonoBehaviour
     public Transform spawnPoint;
 
     [Header("Create")]
-    //public TMP_InputField nameInput;
     public InputField nameInput;
     public Button createButton;
     public Button cancelButton;
     public Toggle gameMasterToggle;
 
-    // =====================================================
-    // Customization UI (DATA-DRIVEN)
-    // =====================================================
     [System.Serializable]
     public class CustomizationRow
     {
@@ -46,9 +39,6 @@ public class UI_CharacterCreation : MonoBehaviour
     [Header("Customization Rows")]
     public List<CustomizationRow> customizationRows = new();
 
-    // =====================================================
-    // Internal
-    // =====================================================
     NetworkManagerMMO manager;
     List<Player> playerClasses;
     int classIndex;
@@ -57,17 +47,15 @@ public class UI_CharacterCreation : MonoBehaviour
     GameObject previewInstance;
     PlayerCustomizationVisuals visuals;
     PlayerCustomizationData previewData;
+    Vector3 previousCameraPosition;
+    Quaternion previousCameraRotation;
+    bool cameraCached;
 
-    // =====================================================
     void Awake()
     {
-        //manager = NetworkManager.singleton as NetworkManagerMMO;
         panel.SetActive(false);
     }
 
-    // =====================================================
-    // SHOW / HIDE
-    // =====================================================
     public void Show()
     {
 #if !UNITY_SERVER
@@ -79,12 +67,20 @@ if (creationCameraLocation != null)
     Camera cam = Camera.main;
     if (cam != null)
     {
+        if (!cameraCached)
+        {
+            previousCameraPosition = cam.transform.position;
+            previousCameraRotation = cam.transform.rotation;
+            cameraCached = true;
+        }
+
         cam.transform.SetPositionAndRotation(
             creationCameraLocation.position,
             creationCameraLocation.rotation
         );
     }
 }
+
 manager = NetworkManager.singleton as NetworkManagerMMO;
 if (manager == null)
 {
@@ -94,10 +90,8 @@ if (manager == null)
         playerClasses = manager.playerClasses;
         if (playerClasses == null || playerClasses.Count == 0)
             return;
-
         if (centerPanel2 != null)
             centerPanel2.SetActive(false);
-
         UIUtils.BalancePrefabs(characterSlot.gameObject, playerClasses.Count, content);
         for (int i = 0; i < playerClasses.Count; i++)
         {
@@ -107,12 +101,9 @@ if (manager == null)
             slot.button.onClick.SetListener(() => SetCharacterClass(idx));
             slot.button.gameObject.SetActive(true);
         }
-
         SetCharacterClass(0);
-
         createButton.onClick.SetListener(CreateCharacter);
         cancelButton.onClick.SetListener(Hide);
-
         panel.SetActive(true);
         initialized = true;
 #endif
@@ -125,6 +116,14 @@ if (manager == null)
 
         panel.SetActive(false);
         initialized = false;
+        Camera cam = Camera.main;
+        if (cam != null && cameraCached)
+        {
+            cam.transform.SetPositionAndRotation(
+                previousCameraPosition,
+                previousCameraRotation);
+            cameraCached = false;
+        }
     }
 
     void Update()
@@ -140,9 +139,6 @@ if (manager == null)
             gameMasterToggle.gameObject.SetActive(NetworkServer.activeHost);
     }
 
-    // =====================================================
-    // CLASS / PREVIEW
-    // =====================================================
     void SetCharacterClass(int index)
     {
         classIndex = index;
@@ -170,9 +166,6 @@ if (manager == null)
         ApplyPreview();
     }
 
-    // =====================================================
-    // CUSTOMIZATION
-    // =====================================================
     void BuildCustomizationUI()
     {
         if (visuals == null || visuals.slots == null)
@@ -202,39 +195,11 @@ if (manager == null)
             row.prev.onClick.RemoveAllListeners();
             row.next.onClick.RemoveAllListeners();
 
-            row.prev.onClick.AddListener(() =>
-            {  SetIndex(slotIndex, (GetIndex(slotIndex) - 1 + meshCount) % meshCount); });
-
-            row.next.onClick.AddListener(() =>
-            { SetIndex(slotIndex, (GetIndex(slotIndex) + 1) % meshCount); });
+            row.prev.onClick.AddListener(() => { int current = previewData.GetByIndex(slotIndex); previewData.SetByIndex(slotIndex, (current - 1 + meshCount) % meshCount);
+                ApplyPreview(); });
+            row.next.onClick.AddListener(() => { int current = previewData.GetByIndex(slotIndex); previewData.SetByIndex(slotIndex, (current + 1) % meshCount);
+                ApplyPreview(); });
         }
-    }
-
-    void SetIndex(int slot, int value)
-    {
-        switch (slot)
-        {
-            case 0: previewData.hair = value; break;
-            case 1: previewData.beard = value; break;
-            case 2: previewData.face = value; break;
-            case 3: previewData.brows = value; break;
-            case 4: previewData.ears = value; break;
-        }
-
-        ApplyPreview();
-    }
-
-    int GetIndex(int slot)
-    {
-        return slot switch
-        {
-            0 => previewData.hair,
-            1 => previewData.beard,
-            2 => previewData.face,
-            3 => previewData.brows,
-            4 => previewData.ears,
-            _ => 0
-        };
     }
 
     void ApplyPreview()
@@ -243,24 +208,18 @@ if (manager == null)
             visuals.Apply(previewData);
     }
 
-    // =====================================================
-    // CREATE
-    // =====================================================
     void CreateCharacter()
     {
         if (string.IsNullOrWhiteSpace(nameInput.text))
             return;
-
         CharacterCreateMsg msg = new CharacterCreateMsg
         {
             name = nameInput.text,
             classIndex = classIndex,
             customization = previewData
         };
-
         NetworkClient.Send(msg);
         Hide();
     }
-
     public bool IsVisible() => panel.activeSelf;
 }

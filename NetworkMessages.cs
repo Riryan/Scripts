@@ -51,6 +51,7 @@ namespace uMMORPG
             public string name;
             public string className; // = the prefab name
             public bool isGameMaster; // for nameoverlay prefix in preview!
+            public PlayerCustomizationData customization;
             public ItemSlot[] equipment;
         }
         public CharacterPreview[] characters;
@@ -70,7 +71,8 @@ namespace uMMORPG
                     name = player.name,
                     className = player.className,
                     isGameMaster = player.isGameMaster,
-                    equipment = player.equipment.slots.ToArray()
+                    equipment = player.equipment.slots.ToArray(),
+                    customization = player.customization
                 };
             }
 

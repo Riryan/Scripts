@@ -31,17 +31,27 @@ public sealed class PlayerCustomizationVisuals : MonoBehaviour
     // ----------------------------------------------------
     // Called once after DB load
     // ----------------------------------------------------
-    public void Apply(PlayerCustomizationData customization)
-    {
+public void Apply(PlayerCustomizationData customization)
+{
+    Player player = GetComponent<Player>();
+    if (player != null && player.isPreview && data.Equals(default))
         data = customization;
-        RefreshAll();
-    }
+    else if (player != null && player.isPreview)
+        return;
+
+    data = customization;
+    RefreshAll();
+}
+
 
     // ----------------------------------------------------
     // Called by PlayerEquipment.RefreshLocation(...)
     // ----------------------------------------------------
     public void RefreshSuppression(PlayerEquipment equipment)
     {
+        Player player = GetComponent<Player>();
+        if (player != null && player.isPreview)
+            return;
         for (int i = 0; i < slots.Length; i++)
             suppressed[i] = IsSuppressed(slots[i], equipment);
 
@@ -50,11 +60,12 @@ public sealed class PlayerCustomizationVisuals : MonoBehaviour
 
     // ----------------------------------------------------
 
-    void RefreshAll()
-    {
-        for (int i = 0; i < slots.Length; i++)
-            ApplySlot(i);
-    }
+void RefreshAll()
+{
+    for (int i = 0; i < slots.Length; i++)
+        ApplySlot(i);
+}
+
 
     void ApplySlot(int index)
     {
@@ -80,6 +91,7 @@ public sealed class PlayerCustomizationVisuals : MonoBehaviour
             bool enable = !suppressed[index] && (i == selected);
             sm.mesh.SetActive(enable);
         }
+        //Debug.Log($"ApplySlot {index}, value={selected}, suppressed={suppressed[index]}");
     }
 
 bool IsSuppressed(CustomizationSlot slot, PlayerEquipment equipment)

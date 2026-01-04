@@ -41,7 +41,7 @@ namespace uMMORPG
             string hash = Utils.PBKDF2Hash(loginPassword, passwordSalt + loginAccount);
             LoginMsg message = new LoginMsg{account=loginAccount, password=hash, version=Application.version};
             NetworkClient.connection.Send(message);
-            Debug.Log("login message was sent");
+            //Debug.Log("login message was sent");
 
             // set state
             manager.state = NetworkState.Handshake;
@@ -100,7 +100,7 @@ namespace uMMORPG
                             manager.lobby[conn] = message.account;
 
                             // login successful
-                            Debug.Log("login successful: " + message.account);
+                            //Debug.Log("login successful: " + message.account);
 
                             // notify client about successful login. otherwise it
                             // won't accept any further messages.

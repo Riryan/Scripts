@@ -76,6 +76,9 @@ public sealed class PlayerMeshSwitcher : MonoBehaviour
         lastMeshIndex[index] = desiredMesh;
 
         EnsureRendererCache(index, info);
+        // Skip customization-only slots
+        if (!string.IsNullOrEmpty(info.requiredCategory) && info.requiredCategory.StartsWith("__"))
+            return;
         ApplySlot(index, info, desiredMesh);
     }
 

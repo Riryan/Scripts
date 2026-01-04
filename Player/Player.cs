@@ -85,11 +85,11 @@ namespace uMMORPG
         public Color nameOverlayMurdererColor = Color.red;
         public Color nameOverlayPartyColor = new Color(0.341f, 0.965f, 0.702f);
         public string nameOverlayGameMasterPrefix = "[GM] ";
-
+        [HideInInspector] public bool isPreview;
         [Header("Icons")]
         public Sprite classIcon; // for character selection
         public Sprite portraitIcon; // for top left portrait
-
+        
         // some meta info
         [HideInInspector] public string account = "";
         [HideInInspector] public string className = "";

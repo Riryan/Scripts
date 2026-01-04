@@ -21,7 +21,7 @@ namespace uMMORPG
         public Player player;
         public Animator animator;
         public PlayerInventory inventory;
-
+        [HideInInspector] public bool isPreview;
         // avatar Camera is only enabled while Equipment UI is active
         [Header("Avatar")]
         public Camera avatarCamera;
@@ -37,14 +37,14 @@ namespace uMMORPG
             new EquipmentInfo{requiredCategory="Hands", location=null, defaultItem=new ScriptableItemAndAmount()},
             new EquipmentInfo{requiredCategory="Feet", location=null, defaultItem=new ScriptableItemAndAmount()},
             // hidden customization slots start here
-            new EquipmentInfo{requiredCategory="__Hair", location=null, defaultItem=new ScriptableItemAndAmount()},
-            new EquipmentInfo{requiredCategory="__Beard", location=null, defaultItem=new ScriptableItemAndAmount()},
-            new EquipmentInfo{requiredCategory="__Eyes", location=null, defaultItem=new ScriptableItemAndAmount()},
-            new EquipmentInfo{requiredCategory="__Face", location=null, defaultItem=new ScriptableItemAndAmount()},
-            new EquipmentInfo{requiredCategory="__Beard2", location=null, defaultItem=new ScriptableItemAndAmount()},
-            new EquipmentInfo{requiredCategory="__Ears", location=null, defaultItem=new ScriptableItemAndAmount()},
-            new EquipmentInfo{requiredCategory="__Brows", location=null, defaultItem=new ScriptableItemAndAmount()},
-            new EquipmentInfo{requiredCategory="__Other", location=null, defaultItem=new ScriptableItemAndAmount()},
+            new EquipmentInfo{requiredCategory="__Customization__Hair", location=null, defaultItem=new ScriptableItemAndAmount()},
+            new EquipmentInfo{requiredCategory="__Customization__Beard", location=null, defaultItem=new ScriptableItemAndAmount()},
+            new EquipmentInfo{requiredCategory="__Customization__Eyes", location=null, defaultItem=new ScriptableItemAndAmount()},
+            new EquipmentInfo{requiredCategory="__Customization__Face", location=null, defaultItem=new ScriptableItemAndAmount()},
+            new EquipmentInfo{requiredCategory="__Customization__Beard2", location=null, defaultItem=new ScriptableItemAndAmount()},
+            new EquipmentInfo{requiredCategory="__Customization__Ears", location=null, defaultItem=new ScriptableItemAndAmount()},
+            new EquipmentInfo{requiredCategory="__Customization__Brows", location=null, defaultItem=new ScriptableItemAndAmount()},
+            new EquipmentInfo{requiredCategory="__Customization__Other", location=null, defaultItem=new ScriptableItemAndAmount()},
         };
 
         // cached SkinnedMeshRenderer bones without equipment, by name
@@ -67,10 +67,11 @@ namespace uMMORPG
             slots.Callback += OnEquipmentChanged;
         #pragma warning restore CS0618
 
+            if (player != null && player.isPreview)
+                return;
+
             for (int i = 0; i < slots.Count; ++i)
                 RefreshLocation(i);
-
-            // APPLY customization ONCE
             PlayerCustomizationVisuals customizationVisuals = GetComponent<PlayerCustomizationVisuals>();
 
             if (customizationVisuals != null)
@@ -170,7 +171,11 @@ namespace uMMORPG
             }
             // ALWAYS do these
             GetComponent<PlayerMeshSwitcher>()?.RefreshMesh(index);
-            GetComponent<PlayerCustomizationVisuals>()?.RefreshSuppression(this);
+            if (!slotInfo[index].requiredCategory.StartsWith("__"))
+            {
+                GetComponent<PlayerCustomizationVisuals>()?.RefreshSuppression(this);
+            }
+
         }
 
         // swap inventory & equipment slots to equip/unequip. used in multiple places

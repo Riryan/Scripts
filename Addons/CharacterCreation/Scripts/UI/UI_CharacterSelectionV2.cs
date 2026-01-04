@@ -24,93 +24,146 @@ public partial class UI_CharacterSelectionV2 : MonoBehaviour
 
     public bool useSelectionAnimation = false;
     public string boolNameAnimation;
+
     [HideInInspector] public int curid = 0;
+
+    // prevents re-applying customization every frame
+    int lastAppliedSelection = -1;
 
     void Update()
     {
-        if (manager.state == NetworkState.Lobby && !uiCharacterCreation.IsVisible())
+        if (manager.state != NetworkState.Lobby || uiCharacterCreation.IsVisible())
         {
-            panel.SetActive(true);
-
-            if (manager.charactersAvailableMsg.characters != null)
-            {
-                CharactersAvailableMsg.CharacterPreview[] characters = manager.charactersAvailableMsg.characters;
-                UIUtils.BalancePrefabs(slotCharacter.gameObject, characters.Length, content);
-                manager.selection = (manager.selection >=0 && characters.Length >= 1) ? manager.selection : 0;
-                for (int c = 0; c < characters.Length; c++)
-                {
-                    int currentID = c;
-                    
-                    Player plyer = manager.selectionLocations[currentID].gameObject.GetComponentInChildren<Player>();
-                    UI_CharacterSlotV2 slot = content.GetChild(currentID).GetComponent<UI_CharacterSlotV2>();
-
-                    slot.characterName.text = characters[currentID].name;
-                    slot.characterLevel.text = "";
-                    slot.characterClasse.text = characters[currentID].className;
-                    slot.isGM.SetActive(
-                        characters[currentID].isGameMaster
-                    );
-
-
-                    slot.button.interactable = (currentID != manager.selection);
-                    slot.button.onClick.SetListener(() =>
-                    {
-                        manager.selection = currentID;
-                    });
-                    manager.selectionLocations[currentID].gameObject.SetActive(manager.selection == currentID);
-                    if (useSelectionAnimation && boolNameAnimation != "")
-                    {
-                        if (plyer != null)
-                            plyer.animator.SetBool(boolNameAnimation, true);
-                    }
-                    if(plyer != null) 
-                        plyer.nameOverlay.gameObject.SetActive(false);
-                    if(plyer && plyer.portraitIcon != null)
-                        slot.characterImage.sprite = plyer.portraitIcon;
-                    curid = manager.selection;
-                }
-                startButton.gameObject.SetActive(manager.selection != -1);
-                startButton.onClick.SetListener(() => {
-
-
-                    NetworkClient.Ready();
-#if _iMMOLOBBY
-                    Tools_UI_Tools.FadeOutScreen(false);
-#endif
-
-                    // send CharacterSelect message (need to be ready first!)
-                    NetworkClient.Send(new CharacterSelectMsg { index = manager.selection });
-                    // clear character selection previews
-                    manager.ClearPreviews();
-                    // make sure we can't select twice and call AddPlayer twice
-                    panel.SetActive(false);
-
-                });
-
-                // delete button
-                deleteButton.gameObject.SetActive(manager.selection != -1);
-                deleteButton.onClick.SetListener(() => {
-                    uiConfirmation.Show(
-                        "Do you really want to delete <b>" + characters[manager.selection].name + "</b>?",
-                        () => { NetworkClient.Send(new CharacterDeleteMsg { index = manager.selection }); }
-                    );
-                });
-
-                createButton.interactable = characters.Length < manager.characterLimit;
-                createButton.onClick.SetListener(() => {
-                    panel.SetActive(false);
-                    uiCharacterCreation.Show();
-                });
-
-                // quit button
-                quitButton.onClick.SetListener(() => { NetworkManagerMMO.Quit(); });
-            }
+            panel.SetActive(false);
+            return;
         }
-        else panel.SetActive(false);
+
+        panel.SetActive(true);
+
+        if (manager.charactersAvailableMsg.characters == null)
+            return;
+
+        CharactersAvailableMsg.CharacterPreview[] characters =
+            manager.charactersAvailableMsg.characters;
+
+        UIUtils.BalancePrefabs(
+            slotCharacter.gameObject,
+            characters.Length,
+            content
+        );
+
+        manager.selection =
+            (manager.selection >= 0 && characters.Length > 0)
+                ? manager.selection
+                : 0;
+
+        for (int c = 0; c < characters.Length; c++)
+        {
+            int currentID = c;
+
+            UI_CharacterSlotV2 slot =
+                content.GetChild(currentID)
+                .GetComponent<UI_CharacterSlotV2>();
+
+            slot.characterName.text   = characters[currentID].name;
+            slot.characterLevel.text  = "";
+            slot.characterClasse.text = characters[currentID].className;
+            slot.isGM.SetActive(characters[currentID].isGameMaster);
+
+            slot.button.interactable = currentID != manager.selection;
+            slot.button.onClick.SetListener(() =>
+            {
+                manager.selection = currentID;
+            });
+
+            GameObject previewRoot = manager.selectionLocations[currentID].gameObject;
+            previewRoot.SetActive(manager.selection == currentID);
+
+            Player player =
+                previewRoot.GetComponentInChildren<Player>();
+
+            if (player != null)
+            {
+// apply customization ONCE when selection changes
+if (manager.selection == currentID &&
+    lastAppliedSelection != currentID)
+{
+    PlayerCustomizationVisuals visuals =
+        player.GetComponent<PlayerCustomizationVisuals>();
+
+    if (visuals != null)
+    {
+        visuals.Apply(characters[currentID].customization);
+        lastAppliedSelection = currentID;
+    }
+}
+
+
+                if (useSelectionAnimation && !string.IsNullOrEmpty(boolNameAnimation))
+                    player.animator.SetBool(boolNameAnimation, true);
+
+                player.nameOverlay.gameObject.SetActive(false);
+
+                if (player.portraitIcon != null)
+                    slot.characterImage.sprite = player.portraitIcon;
+            }
+
+            curid = manager.selection;
+        }
+
+        // START
+        startButton.gameObject.SetActive(manager.selection != -1);
+        startButton.onClick.SetListener(() =>
+        {
+            NetworkClient.Ready();
+#if _iMMOLOBBY
+            Tools_UI_Tools.FadeOutScreen(false);
+#endif
+            NetworkClient.Send(
+                new CharacterSelectMsg { index = manager.selection }
+            );
+            manager.ClearPreviews();
+            panel.SetActive(false);
+        });
+
+        // DELETE
+        deleteButton.gameObject.SetActive(manager.selection != -1);
+        deleteButton.onClick.SetListener(() =>
+        {
+            uiConfirmation.Show(
+                "Do you really want to delete <b>" +
+                characters[manager.selection].name + "</b>?",
+                () =>
+                {
+                    NetworkClient.Send(
+                        new CharacterDeleteMsg
+                        {
+                            index = manager.selection
+                        }
+                    );
+                }
+            );
+        });
+
+        // CREATE
+        createButton.interactable =
+            characters.Length < manager.characterLimit;
+
+        createButton.onClick.SetListener(() =>
+        {
+            panel.SetActive(false);
+            uiCharacterCreation.Show();
+        });
+
+        // QUIT
+        quitButton.onClick.SetListener(() =>
+        {
+            NetworkManagerMMO.Quit();
+        });
     }
 
     public void MoveCameraToPlayer(Vector3 playerpos)
     {
-            mycamera.position = playerpos - new Vector3(-2, -2,0); // Ajustez les valeurs selon vos besoins
+        mycamera.position = playerpos - new Vector3(-2, -2, 0);
     }
 }

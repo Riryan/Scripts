@@ -554,6 +554,7 @@ namespace uMMORPG
                     player.isGameMaster                           = row.gamemaster;
                     player.itemMall.coins                         = row.coins;
                     player.customization = PlayerCustomizationData.Deserialize(row.customization);
+                    player.isPreview = isPreview;
                     // can the player's movement type spawn on the saved position?
                     // it might not be if we changed the terrain, or if the player
                     // logged out in an instanced dungeon that doesn't exist anymore
@@ -574,20 +575,19 @@ namespace uMMORPG
                         // the server logs too much.
                         //Debug.Log(player.name + " spawn position reset because it's not on a NavMesh anymore. This can happen if the player previously logged out in an instance or if the Terrain was changed.");
                     //}
-Vector3 spawnPosition;
+                    Vector3 spawnPosition;
+                    // validate spawn position
+                    if (player.movement.IsValidSpawnPoint(position))
+                    {
+                        spawnPosition = position;
+                    }
+                    else
+                    {
+                        Transform start = NetworkManagerMMO.GetNearestStartPosition(position);
+                        spawnPosition = start.position;
+                    }
 
-// validate spawn position
-if (player.movement.IsValidSpawnPoint(position))
-{
-    spawnPosition = position;
-}
-else
-{
-    Transform start = NetworkManagerMMO.GetNearestStartPosition(position);
-    spawnPosition = start.position;
-}
-
-// INITIAL SPAWN: set transform directly (NO RPC, NO Warp)
+                    // INITIAL SPAWN: set transform directly (NO RPC, NO Warp)
                     go.transform.position = spawnPosition;
 
                     LoadInventory(player.inventory);
@@ -607,12 +607,15 @@ else
                     // the next CharacterSave() call, which might take 5-10 minutes.
                     // => don't set it when loading previews though. only when
                     //    really joining the world (hence setOnline flag)
+                    
                     if (!isPreview)
                         connection.Execute("UPDATE characters SET online=1, lastsaved=? WHERE name=?", DateTime.UtcNow, characterName);
 
                     // addon system hooks
                     onCharacterLoad.Invoke(player);
-
+                    var visuals = go.GetComponent<PlayerCustomizationVisuals>();
+                    if (visuals != null)
+                        visuals.Apply(player.customization);
                     return go;
                 }
                 else Debug.LogError("no prefab found for class: " + row.classname);
