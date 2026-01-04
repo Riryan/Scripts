@@ -4,16 +4,9 @@ using uMMORPG;
 [DisallowMultipleComponent]
 public sealed class PlayerMeshSwitcher : MonoBehaviour
 {
-#if UNITY_SERVER
-    void Awake()
-    {
-        enabled = false;
-    }
-#else
     [SerializeField, HideInInspector]
     PlayerEquipment equipment;
 
-    // Phase 1 caches
     int[] lastMeshIndex;
     Renderer[][] slotRenderers;
 
@@ -25,6 +18,15 @@ public sealed class PlayerMeshSwitcher : MonoBehaviour
 
     void Awake()
     {
+#if UNITY_SERVER
+        // Disable ONLY on true headless server
+        if (Application.isBatchMode)
+        {
+            enabled = false;
+            return;
+        }
+#endif
+
         if (equipment == null)
             equipment = GetComponent<PlayerEquipment>();
 
@@ -47,6 +49,9 @@ public sealed class PlayerMeshSwitcher : MonoBehaviour
     /// </summary>
     public void RefreshMesh(int index)
     {
+        if (!enabled)
+            return;
+
         if (index < 0 || index >= equipment.slotInfo.Length)
             return;
 
@@ -62,24 +67,30 @@ public sealed class PlayerMeshSwitcher : MonoBehaviour
         // ----------------------------------------------------
         int desiredMesh = 0;
 
-        if (slot.amount > 0 && slot.item.data is EquipmentItem)
+        if (slot.amount > 0 && slot.item.data is EquipmentItem item)
         {
-            EquipmentItem item = (EquipmentItem)slot.item.data;
             if (item.meshIndex != null && item.meshIndex.Length > 0)
                 desiredMesh = item.meshIndex[0];
         }
-
         // Early-out if nothing changed
         if (lastMeshIndex[index] == desiredMesh)
             return;
 
         lastMeshIndex[index] = desiredMesh;
-
         EnsureRendererCache(index, info);
         // Skip customization-only slots
-        if (!string.IsNullOrEmpty(info.requiredCategory) && info.requiredCategory.StartsWith("__"))
+        if (!string.IsNullOrEmpty(info.requiredCategory) &&
+            info.requiredCategory.StartsWith("__"))
             return;
         ApplySlot(index, info, desiredMesh);
+    }
+
+    public void ForceRefresh(int index)
+    {
+        if (index < 0 || index >= lastMeshIndex.Length)
+            return;
+
+        lastMeshIndex[index] = int.MinValue;
     }
 
     // ----------------------------------------------------
@@ -117,8 +128,8 @@ public sealed class PlayerMeshSwitcher : MonoBehaviour
 
         EquipmentItem item =
             (slot.amount > 0 && slot.item.data is EquipmentItem)
-            ? (EquipmentItem)slot.item.data
-            : null;
+                ? (EquipmentItem)slot.item.data
+                : null;
 
         for (int i = 0; i < info.mesh.Length; i++)
         {
@@ -149,5 +160,4 @@ public sealed class PlayerMeshSwitcher : MonoBehaviour
             }
         }
     }
-#endif
 }

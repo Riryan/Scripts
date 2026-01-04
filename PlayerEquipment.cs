@@ -141,42 +141,64 @@ namespace uMMORPG
                 anim.Rebind();
         }
 
-        public void RefreshLocation(int index)
+public void RefreshLocation(int index)
+{
+    ItemSlot slot = slots[index];
+    EquipmentInfo info = slotInfo[index];
+    PlayerMeshSwitcher switcher = GetComponent<PlayerMeshSwitcher>();
+
+    EquipmentItem itemData =
+        (slot.amount > 0 && slot.item.data is EquipmentItem)
+        ? (EquipmentItem)slot.item.data
+        : null;
+
+bool useMeshSwitch =
+    itemData != null &&
+    itemData.meshIndex != null &&
+    itemData.meshIndex.Length > 0 &&
+    info.mesh != null &&
+    info.mesh.Length > 0;
+
+    // -------------------------------
+    // PREFAB PATH (legacy / weapons)
+    // -------------------------------
+    if (!useMeshSwitch && info.requiredCategory != "" && info.location != null)
+    {
+        if (info.location.childCount > 0)
+            Destroy(info.location.GetChild(0).gameObject);
+
+        if (itemData != null && itemData.modelPrefab != null)
         {
-            ItemSlot slot = slots[index];
-            EquipmentInfo info = slotInfo[index];
+            GameObject go = Instantiate(itemData.modelPrefab, info.location, false);
+            go.name = itemData.modelPrefab.name;
 
-            if (info.requiredCategory != "" && info.location != null)
+            SkinnedMeshRenderer skin = go.GetComponentInChildren<SkinnedMeshRenderer>();
+            if (skin != null && CanReplaceAllBones(skin))
+                ReplaceAllBones(skin);
+
+            Animator anim = go.GetComponent<Animator>();
+            if (anim != null)
             {
-                if (info.location.childCount > 0) Destroy(info.location.GetChild(0).gameObject);
-                if (slot.amount > 0)
-                {
-                    EquipmentItem itemData = (EquipmentItem)slot.item.data;
-                    if (itemData.modelPrefab != null)
-                    {
-                        GameObject go = Instantiate(itemData.modelPrefab, info.location, false);
-                        go.name = itemData.modelPrefab.name; // avoid "(Clone)"
-                        SkinnedMeshRenderer equipmentSkin = go.GetComponentInChildren<SkinnedMeshRenderer>();
-                        if (equipmentSkin != null && CanReplaceAllBones(equipmentSkin))
-                            ReplaceAllBones(equipmentSkin);
-                        Animator anim = go.GetComponent<Animator>();
-                        if (anim != null)
-                        {
-                            anim.runtimeAnimatorController = animator.runtimeAnimatorController;
-
-                            RebindAnimators();
-                        }
-                    }
-                }
+                anim.runtimeAnimatorController = animator.runtimeAnimatorController;
+                RebindAnimators();
             }
-            // ALWAYS do these
-            GetComponent<PlayerMeshSwitcher>()?.RefreshMesh(index);
-            if (!slotInfo[index].requiredCategory.StartsWith("__"))
-            {
-                GetComponent<PlayerCustomizationVisuals>()?.RefreshSuppression(this);
-            }
-
         }
+    }
+
+    // -------------------------------
+    // MESH SWITCH PATH
+    // -------------------------------
+    if (useMeshSwitch && switcher != null)
+    {
+        if (slot.amount == 0)
+            switcher.ForceRefresh(index);
+
+        switcher.RefreshMesh(index);
+    }
+
+    if (!info.requiredCategory.StartsWith("__"))
+        GetComponent<PlayerCustomizationVisuals>()?.RefreshSuppression(this);
+}
 
         // swap inventory & equipment slots to equip/unequip. used in multiple places
         [Server]

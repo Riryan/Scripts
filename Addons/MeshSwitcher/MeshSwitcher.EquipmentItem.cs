@@ -2,6 +2,11 @@ using UnityEngine;
 
 namespace uMMORPG
 {
+    public enum EquipmentVisualMode
+    {
+        MeshSwitch,
+        Prefab
+    }
     // EQUIPMENT ITEM (Mesh Switcher extension)
     public partial class EquipmentItem
     {
@@ -14,6 +19,12 @@ namespace uMMORPG
 
         [Tooltip("Optional color overrides applied to the material")]
         public SwitchableColor[] switchableColors;
+
+
+
+        [Header("Visual Mode")]
+        public EquipmentVisualMode visualMode = EquipmentVisualMode.Prefab;
+    
 
 #if UNITY_EDITOR
         void OnValidate()
