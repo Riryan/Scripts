@@ -24,24 +24,26 @@ namespace uMMORPG
         public bool showHealbar;
         [SerializeField] private GameObject HealbarOverlayPosition = null;
 #endif
+void InitDisplayOverlays()
+{
+    bool isSelf = isLocalPlayer;
 
-        void InitDisplayOverlays()
-        {
-            if (nameOverlayPosition != null)
-                nameOverlayPosition.SetActive(showName);
+    if (nameOverlayPosition != null)
+        nameOverlayPosition.SetActive(showName && !isSelf);
 
-            if (guildOverlayPosition != null)
-                guildOverlayPosition.SetActive(showGuild);
+    if (guildOverlayPosition != null)
+        guildOverlayPosition.SetActive(showGuild && !isSelf);
 
 #if _iMMOTITLES
-            if (titleOverlayPosition != null)
-                titleOverlayPosition.SetActive(showTitle);
+    if (titleOverlayPosition != null)
+        titleOverlayPosition.SetActive(showTitle && !isSelf);
 #endif
 
 #if _iMMOSTATSOVERLAY
-            if (HealbarOverlayPosition != null)
-                HealbarOverlayPosition.SetActive(showHealbar);
+    if (HealbarOverlayPosition != null)
+        HealbarOverlayPosition.SetActive(showHealbar && !isSelf);
 #endif
-        }
+}
+
     }
 }

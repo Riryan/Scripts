@@ -19,13 +19,8 @@ namespace uMMORPG
 
         void Start()
         {
-            // do nothing if not spawned (=for character selection previews)
             if (!isServer && !isClient) return;
 
-            // spawn effects for any buffs that might still be active after loading
-            // (OnStartServer is too early)
-            // note: no need to do that in Entity.Start because we don't load them
-            //       with previously casted skills
             if (isServer)
                 for (int i = 0; i < buffs.Count; ++i)
                     if (buffs[i].BuffTimeRemaining() > 0)
@@ -35,11 +30,9 @@ namespace uMMORPG
         [Command]
         public void CmdUse(int skillIndex)
         {
-            // validate
             if ((entity.state == "IDLE" || entity.state == "MOVING" || entity.state == "CASTING") &&
                 0 <= skillIndex && skillIndex < skills.Count)
             {
-                // skill learned and can be casted?
                 if (skills[skillIndex].level > 0 && skills[skillIndex].IsReady())
                 {
                     currentSkill = skillIndex;
@@ -47,13 +40,9 @@ namespace uMMORPG
             }
         }
 
-        // helper function: try to use a skill and walk into range if necessary
         [Client]
         public void TryUse(int skillIndex, bool ignoreState=false)
         {
-            // only if not casting already
-            // (might need to ignore that when coming from pending skill where
-            //  CASTING is still true)
             if (entity.state != "CASTING" || ignoreState)
             {
                 Skill skill = skills[skillIndex];
@@ -80,11 +69,25 @@ namespace uMMORPG
                     {
                         // move to the target first
                         // (use collider point(s) to also work with big entities)
-                        float stoppingDistance = skill.castRange * ((Player)entity).attackToMoveRangeRatio;
-                        movement.Navigate(destination, stoppingDistance);
+                        //float stoppingDistance = skill.castRange * ((Player)entity).attackToMoveRangeRatio;
+                        //movement.Navigate(destination, stoppingDistance);
 
                         // use skill when there
+                        //((Player)entity).useSkillWhenCloser = skillIndex;
+                        //float stoppingDistance = skill.castRange * ((Player)entity).attackToMoveRangeRatio;
+                        float stoppingDistance = ((Player)entity).autoCloseDistance;
+                        if (movement.CanNavigate())
+                        {
+                            movement.Navigate(destination, stoppingDistance);
+                        }
+                        else if (movement is PlayerCharacterControllerMovement cc)
+                        {
+                            cc.StartAutoCloseDistance(destination);
+                        }
+
+                        // persist intent for BOTH controllers
                         ((Player)entity).useSkillWhenCloser = skillIndex;
+
                     }
                 }
             }

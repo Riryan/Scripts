@@ -84,6 +84,14 @@ namespace uMMORPG
 
         [Header("Mounted")]
         public float mountedRotationSpeed = 100;
+        
+        [Header("Auto Close Distance")]
+        public bool enableAutoCloseDistance = true;
+        public float autoCloseStoppingDistance = 0.1f;
+
+        Vector3 autoCloseTarget;
+        Transform autoCloseTargetTransform;
+        bool autoClosing;
 
         [Header("Physics")]
         [Tooltip("Apply a small default downward force while grounded in order to stick on the ground and on rounded surfaces. Otherwise walking on rounded surfaces would be detected as falls, preventing the player from jumping.")]
@@ -123,6 +131,8 @@ namespace uMMORPG
         Vector2 freeLookDragStart;
         public int mouseFreeLookButton = 0; // left button by default
         public int mouseRotateButton = 1; // right button by default
+        [SerializeField] float normalFollowSpeed = 30f;   // snappy
+        [SerializeField] float combatFollowSpeed = 6f;    // damped
 
         public bool mouseRotationLocksCursor = true;
 
@@ -351,6 +361,26 @@ namespace uMMORPG
         bool EventDismounted()
         {
             return !mountControl.IsMounted();
+        }
+        public void StartAutoCloseDistance(Vector3 targetPosition)
+        {
+            if (!enableAutoCloseDistance || !isLocalPlayer) return;
+            autoCloseTarget = targetPosition;
+            autoCloseTargetTransform = null;
+            autoClosing = true;
+        }
+
+        public void StartAutoCloseDistance(Vector3 targetPosition, Transform targetTransform)
+        {
+            if (!enableAutoCloseDistance || !isLocalPlayer) return;
+            autoCloseTarget = targetPosition;
+            autoCloseTargetTransform = targetTransform;
+            autoClosing = true;
+        }
+        
+        public void StopAutoCloseDistance()
+        {
+            autoClosing = false;
         }
 
         bool EventUnderWater()
@@ -834,7 +864,80 @@ namespace uMMORPG
                 // get input and desired direction based on camera and ground
                 Vector2 inputDir = player.IsMovementAllowed() ? GetInputDirection() : Vector2.zero;
                 Vector3 desiredDir = GetDesiredDirection(inputDir);
-                Debug.DrawLine(transform.position, transform.position + desiredDir, Color.cyan);
+
+                if (autoClosing)
+                {
+                    if (!player.IsMovementAllowed() || state == MoveState.DEAD || player.state == "CASTING")
+                    {
+                        autoClosing = false;
+                    }
+                    else
+                    {
+                        Vector3 targetPos = autoCloseTargetTransform != null
+                            ? autoCloseTargetTransform.position
+                            : autoCloseTarget;
+
+                        Vector3 toTarget = targetPos - transform.position;
+                        toTarget.y = 0;
+
+                        bool reached = false;
+                        Player p = (Player)player;
+
+                        if (p.useSkillWhenCloser != -1)
+                        {
+                            Skill skill = p.skills.skills[p.useSkillWhenCloser];
+                            float requiredRange = skill.castRange * p.attackToMoveRangeRatio;
+
+                            if (toTarget.magnitude <= requiredRange)
+                                reached = true;
+                        }
+
+                        if (reached)
+                        {
+                            autoClosing = false;
+                        }
+                        else if (inputDir == Vector2.zero)
+                        {
+                            Vector3 dir = toTarget.normalized;
+                            LookAtY(transform.position + dir);
+                            inputDir = new Vector2(0, 1);
+                            desiredDir = dir;
+                        }
+                    }
+                }
+Debug.DrawLine(transform.position, transform.position + desiredDir, Color.cyan);
+
+
+                
+                // ================= RO STYLE AUTO-ATTACK LOOP =================
+                // Server-authoritative, movement-gated auto attack
+                if (isServer)
+                {
+                    Player p = player as Player;
+                    if (p != null &&
+                        p.useSkillWhenCloser != -1 &&
+                        p.defaultAttackSkill != -1 &&
+                        p.target != null &&
+                        p.target.health.current > 0)
+                    {
+                        // stop ONLY on directional movement
+                        if (inputDir == Vector2.zero && p.state != "CASTING")
+                        {
+                            Skill skill = p.skills.skills[p.defaultAttackSkill];
+                            float distance = Vector3.Distance(transform.position, p.target.transform.position);
+                            if (distance <= skill.castRange)
+                            {
+                                ((PlayerSkills)p.skills).TryUse(p.defaultAttackSkill);
+                            }
+                        }
+                        else if (inputDir != Vector2.zero)
+                        {
+                            // manual movement cancels engagement
+                            p.useSkillWhenCloser = -1;
+                        }
+                    }
+                }
+                // ===============================================================
 
                 // update state machine
                 if      (state == MoveState.IDLE)             state = UpdateIDLE(inputDir, desiredDir);
@@ -1316,7 +1419,12 @@ namespace uMMORPG
             else Debug.DrawLine(target, newPosition, Color.green);
 
             // set final position
-            camera.transform.position = target - (camera.transform.rotation * Vector3.forward * finalDistance);
+            //camera.transform.position = target - (camera.transform.rotation * Vector3.forward * finalDistance);
+            Vector3 desiredPosition = target - (camera.transform.rotation * Vector3.forward * finalDistance);
+            bool inCombat = player != null && player.useSkillWhenCloser != -1;
+            float followSpeed = inCombat ? combatFollowSpeed : normalFollowSpeed;
+            camera.transform.position = Vector3.Lerp(camera.transform.position, desiredPosition, Time.deltaTime * followSpeed);
+
         }
 
         public bool IsFreeLooking()

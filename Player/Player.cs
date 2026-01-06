@@ -89,7 +89,10 @@ namespace uMMORPG
         [Header("Icons")]
         public Sprite classIcon; // for character selection
         public Sprite portraitIcon; // for top left portrait
-        
+        [Header("Combat")]
+        public int defaultAttackSkill = -1;
+        [Header("Combat Movement")]
+        public float autoCloseDistance = 0.75f;
         // some meta info
         [HideInInspector] public string account = "";
         [HideInInspector] public string className = "";
