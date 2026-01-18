@@ -17,6 +17,8 @@ public class PlayerCustomizationVisualsEditor : Editor
 
     public override void OnInspectorGUI()
     {
+        if (visuals == null)
+            return;
         DrawDefaultInspector();
 
         EditorGUILayout.Space(10);
@@ -102,6 +104,10 @@ public class PlayerCustomizationVisualsEditor : Editor
     {
         foreach (var slot in visuals.slots)
             ResetSlot(slot);
+    }
+    void OnDisable()
+    {
+        visuals = null;
     }
 }
 #endif

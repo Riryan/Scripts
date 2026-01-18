@@ -15,13 +15,13 @@ namespace uMMORPG
 
     [RequireComponent(typeof(Animator))]
     [RequireComponent(typeof(PlayerInventory))]
-    public partial class PlayerEquipment : Equipment
+    public class PlayerEquipment : Equipment
     {
         [Header("Components")]
         public Player player;
         public Animator animator;
         public PlayerInventory inventory;
-        [HideInInspector] public bool isPreview;
+
         // avatar Camera is only enabled while Equipment UI is active
         [Header("Avatar")]
         public Camera avatarCamera;
@@ -35,26 +35,14 @@ namespace uMMORPG
             new EquipmentInfo{requiredCategory="Shield", location=null, defaultItem=new ScriptableItemAndAmount()},
             new EquipmentInfo{requiredCategory="Shoulders", location=null, defaultItem=new ScriptableItemAndAmount()},
             new EquipmentInfo{requiredCategory="Hands", location=null, defaultItem=new ScriptableItemAndAmount()},
-            new EquipmentInfo{requiredCategory="Feet", location=null, defaultItem=new ScriptableItemAndAmount()},
-            // hidden customization slots start here
-            new EquipmentInfo{requiredCategory="__Customization__Hair", location=null, defaultItem=new ScriptableItemAndAmount()},
-            new EquipmentInfo{requiredCategory="__Customization__Beard", location=null, defaultItem=new ScriptableItemAndAmount()},
-            new EquipmentInfo{requiredCategory="__Customization__Eyes", location=null, defaultItem=new ScriptableItemAndAmount()},
-            new EquipmentInfo{requiredCategory="__Customization__Face", location=null, defaultItem=new ScriptableItemAndAmount()},
-            new EquipmentInfo{requiredCategory="__Customization__Beard2", location=null, defaultItem=new ScriptableItemAndAmount()},
-            new EquipmentInfo{requiredCategory="__Customization__Ears", location=null, defaultItem=new ScriptableItemAndAmount()},
-            new EquipmentInfo{requiredCategory="__Customization__Brows", location=null, defaultItem=new ScriptableItemAndAmount()},
-            new EquipmentInfo{requiredCategory="__Customization__Other", location=null, defaultItem=new ScriptableItemAndAmount()},
+            new EquipmentInfo{requiredCategory="Feet", location=null, defaultItem=new ScriptableItemAndAmount()}
         };
-
+        public const int UNARMED_WEAPON_INDEX = -2;
         // cached SkinnedMeshRenderer bones without equipment, by name
         Dictionary<string, Transform> skinBones = new Dictionary<string, Transform>();
 
         void Awake()
         {
-            // cache all default SkinnedMeshRenderer bones without equipment
-            // (we might have multiple SkinnedMeshRenderers e.g. on feet, legs, etc.
-            //  so we need GetComponentsInChildren)
             foreach (SkinnedMeshRenderer skin in GetComponentsInChildren<SkinnedMeshRenderer>())
                 foreach (Transform bone in skin.bones)
                     skinBones[bone.name] = bone;
@@ -62,68 +50,35 @@ namespace uMMORPG
 
         public override void OnStartClient()
         {
-            base.OnStartClient();
-        #pragma warning disable CS0618
+     #pragma warning disable CS0618
             slots.Callback += OnEquipmentChanged;
-        #pragma warning restore CS0618
-
-            if (player != null && player.isPreview)
-                return;
+     #pragma warning restore CS0618
 
             for (int i = 0; i < slots.Count; ++i)
                 RefreshLocation(i);
-            PlayerCustomizationVisuals customizationVisuals = GetComponent<PlayerCustomizationVisuals>();
-
-            if (customizationVisuals != null)
-            {
-            customizationVisuals.Apply(player.customization);
-            customizationVisuals.RefreshSuppression(this);
-            }
         }
-
 
         void OnEquipmentChanged(SyncList<ItemSlot>.Operation op, int index, ItemSlot oldSlot, ItemSlot newSlot)
         {
-            // at first, check if the item model actually changed. we don't need to
-            // refresh anything if only the durability changed.
-            // => this fixes a bug where attack animations were constantly being
-            //    reset for no obvious reason. this happened because with durability
-            //    items, any time we get attacked the equipment durability changes.
-            //    this causes the OnEquipmentChanged hook to be fired, which would
-            //    then refresh the location and rebind the animator, causing the
-            //    animator to start at the entry state again (hence restart the
-            //    animation).
-            //
-            // note: checking .data is enough. we don't need to check as deep as
-            //       .data.model. this way we avoid the EquipmentItem cast.
             ScriptableItem oldItem = oldSlot.amount > 0 ? oldSlot.item.data : null;
             ScriptableItem newItem = newSlot.amount > 0 ? newSlot.item.data : null;
             if (oldItem != newItem)
             {
-                // update the model
                 RefreshLocation(index);
             }
         }
 
-        public bool CanReplaceAllBones(SkinnedMeshRenderer equipmentSkin)
+        bool CanReplaceAllBones(SkinnedMeshRenderer equipmentSkin)
         {
-            // are all equipment SkinnedMeshRenderer bones in the player bones?
-            // (avoid Linq because it is HEAVY(!) on GC and performance)
             foreach (Transform bone in equipmentSkin.bones)
                 if (!skinBones.ContainsKey(bone.name))
                     return false;
             return true;
         }
 
-        // replace all equipment SkinnedMeshRenderer bones with the original player
-        // bones so that the equipment animation works with IK too
-        // (make sure to check CanReplaceAllBones before)
-        public void ReplaceAllBones(SkinnedMeshRenderer equipmentSkin)
+        void ReplaceAllBones(SkinnedMeshRenderer equipmentSkin)
         {
-            // get equipment bones
             Transform[] bones = equipmentSkin.bones;
-
-            // replace each one
             for (int i = 0; i < bones.Length; ++i)
             {
                 string boneName = bones[i].name;
@@ -131,92 +86,59 @@ namespace uMMORPG
                     Debug.LogWarning(equipmentSkin.name + " bone " + boneName + " not found in original player bones. Make sure to check CanReplaceAllBones before.");
             }
 
-            // reassign bones
             equipmentSkin.bones = bones;
         }
 
-        public void RebindAnimators()
+        void RebindAnimators()
         {
             foreach (Animator anim in GetComponentsInChildren<Animator>())
                 anim.Rebind();
         }
 
-public void RefreshLocation(int index)
-{
-    ItemSlot slot = slots[index];
-    EquipmentInfo info = slotInfo[index];
-    PlayerMeshSwitcher switcher = GetComponent<PlayerMeshSwitcher>();
-
-    EquipmentItem itemData =
-        (slot.amount > 0 && slot.item.data is EquipmentItem)
-        ? (EquipmentItem)slot.item.data
-        : null;
-
-bool useMeshSwitch =
-    itemData != null &&
-    itemData.meshIndex != null &&
-    itemData.meshIndex.Length > 0 &&
-    info.mesh != null &&
-    info.mesh.Length > 0;
-
-    // -------------------------------
-    // PREFAB PATH (legacy / weapons)
-    // -------------------------------
-    if (!useMeshSwitch && info.requiredCategory != "" && info.location != null)
-    {
-        if (info.location.childCount > 0)
-            Destroy(info.location.GetChild(0).gameObject);
-
-        if (itemData != null && itemData.modelPrefab != null)
+        public void RefreshLocation(int index)
         {
-            GameObject go = Instantiate(itemData.modelPrefab, info.location, false);
-            go.name = itemData.modelPrefab.name;
+            ItemSlot slot = slots[index];
+            EquipmentInfo info = slotInfo[index];
 
-            SkinnedMeshRenderer skin = go.GetComponentInChildren<SkinnedMeshRenderer>();
-            if (skin != null && CanReplaceAllBones(skin))
-                ReplaceAllBones(skin);
-
-            Animator anim = go.GetComponent<Animator>();
-            if (anim != null)
+            if (info.requiredCategory != "" && info.location != null)
             {
-                anim.runtimeAnimatorController = animator.runtimeAnimatorController;
-                RebindAnimators();
+                if (info.location.childCount > 0) Destroy(info.location.GetChild(0).gameObject);
+
+                if (slot.amount > 0)
+                {
+                    EquipmentItem itemData = (EquipmentItem)slot.item.data;
+                    if (itemData.modelPrefab != null)
+                    {
+                        GameObject go = Instantiate(itemData.modelPrefab, info.location, false);
+                        go.name = itemData.modelPrefab.name; // avoid "(Clone)"
+
+                        SkinnedMeshRenderer equipmentSkin = go.GetComponentInChildren<SkinnedMeshRenderer>();
+                        if (equipmentSkin != null && CanReplaceAllBones(equipmentSkin))
+                            ReplaceAllBones(equipmentSkin);
+
+                        Animator anim = go.GetComponent<Animator>();
+                        if (anim != null)
+                        {
+                            anim.runtimeAnimatorController = animator.runtimeAnimatorController;
+                            RebindAnimators();
+                        }
+                    }
+                }
             }
         }
-    }
 
-    // -------------------------------
-    // MESH SWITCH PATH
-    // -------------------------------
-    if (useMeshSwitch && switcher != null)
-    {
-        if (slot.amount == 0)
-            switcher.ForceRefresh(index);
-
-        switcher.RefreshMesh(index);
-    }
-
-    if (!info.requiredCategory.StartsWith("__"))
-        GetComponent<PlayerCustomizationVisuals>()?.RefreshSuppression(this);
-}
-
-        // swap inventory & equipment slots to equip/unequip. used in multiple places
         [Server]
         public void SwapInventoryEquip(int inventoryIndex, int equipmentIndex)
         {
-            // validate: make sure that the slots actually exist in the inventory
-            // and in the equipment
             if (inventory.InventoryOperationsAllowed() &&
                 0 <= inventoryIndex && inventoryIndex < inventory.slots.Count &&
                 0 <= equipmentIndex && equipmentIndex < slots.Count)
             {
-                // item slot has to be empty (unequip) or equipabable
                 ItemSlot slot = inventory.slots[inventoryIndex];
                 if (slot.amount == 0 ||
                     slot.item.data is EquipmentItem itemData &&
                     itemData.CanEquip(player, inventoryIndex, equipmentIndex))
                 {
-                    // swap them
                     ItemSlot temp = slots[equipmentIndex];
                     slots[equipmentIndex] = slot;
                     inventory.slots[inventoryIndex] = temp;
@@ -237,23 +159,14 @@ bool useMeshSwitch =
                 0 <= inventoryIndex && inventoryIndex < inventory.slots.Count &&
                 0 <= equipmentIndex && equipmentIndex < slots.Count)
             {
-                // both items have to be valid
-                // note: no 'is EquipmentItem' check needed because we already
-                //       checked when equipping 'slotTo'.
                 ItemSlot slotFrom = inventory.slots[inventoryIndex];
                 ItemSlot slotTo = slots[equipmentIndex];
                 if (slotFrom.amount > 0 && slotTo.amount > 0)
                 {
-                    // make sure that items are the same type
-                    // note: .Equals because name AND dynamic variables matter (petLevel etc.)
                     if (slotFrom.item.Equals(slotTo.item))
                     {
-                        // merge from -> to
-                        // put as many as possible into 'To' slot
                         int put = slotTo.IncreaseAmount(slotFrom.amount);
                         slotFrom.DecreaseAmount(put);
-
-                        // put back into the list
                         inventory.slots[inventoryIndex] = slotFrom;
                         slots[equipmentIndex] = slotTo;
                     }
@@ -274,21 +187,15 @@ bool useMeshSwitch =
                 0 <= inventoryIndex && inventoryIndex < inventory.slots.Count &&
                 0 <= equipmentIndex && equipmentIndex < slots.Count)
             {
-                // both items have to be valid
                 ItemSlot slotFrom = slots[equipmentIndex];
                 ItemSlot slotTo = inventory.slots[inventoryIndex];
                 if (slotFrom.amount > 0 && slotTo.amount > 0)
                 {
-                    // make sure that items are the same type
-                    // note: .Equals because name AND dynamic variables matter (petLevel etc.)
                     if (slotFrom.item.Equals(slotTo.item))
                     {
-                        // merge from -> to
-                        // put as many as possible into 'To' slot
                         int put = slotTo.IncreaseAmount(slotFrom.amount);
                         slotFrom.DecreaseAmount(put);
 
-                        // put back into the list
                         slots[equipmentIndex] = slotFrom;
                         inventory.slots[inventoryIndex] = slotTo;
                     }
@@ -296,10 +203,8 @@ bool useMeshSwitch =
             }
         }
 
-        // durability //////////////////////////////////////////////////////////////
         public void OnDamageDealtTo(Entity victim)
         {
-            // reduce weapon durability by one each time we attacked someone
             int weaponIndex = GetEquippedWeaponIndex();
             if (weaponIndex != -1)
             {
@@ -311,7 +216,6 @@ bool useMeshSwitch =
 
         public void OnReceivedDamage(Entity attacker, int damage)
         {
-            // reduce durability by one in each equipped item
             for (int i = 0; i < slots.Count; ++i)
             {
                 if (slots[i].amount > 0)
@@ -326,16 +230,11 @@ bool useMeshSwitch =
         // drag & drop /////////////////////////////////////////////////////////////
         void OnDragAndDrop_InventorySlot_EquipmentSlot(int[] slotIndices)
         {
-            // slotIndices[0] = slotFrom; slotIndices[1] = slotTo
-
-            // merge? check Equals because name AND dynamic variables matter (petLevel etc.)
-            // => merge is important when dragging more arrows into an arrow slot!
             if (inventory.slots[slotIndices[0]].amount > 0 && slots[slotIndices[1]].amount > 0 &&
                 inventory.slots[slotIndices[0]].item.Equals(slots[slotIndices[1]].item))
             {
                 CmdMergeInventoryEquip(slotIndices[0], slotIndices[1]);
             }
-            // swap?
             else
             {
                 CmdSwapInventoryEquip(slotIndices[0], slotIndices[1]);
@@ -344,29 +243,21 @@ bool useMeshSwitch =
 
         void OnDragAndDrop_EquipmentSlot_InventorySlot(int[] slotIndices)
         {
-            // slotIndices[0] = slotFrom; slotIndices[1] = slotTo
-
-            // merge? check Equals because name AND dynamic variables matter (petLevel etc.)
-            // => merge is important when dragging more arrows into an arrow slot!
             if (slots[slotIndices[0]].amount > 0 && inventory.slots[slotIndices[1]].amount > 0 &&
                 slots[slotIndices[0]].item.Equals(inventory.slots[slotIndices[1]].item))
             {
                 CmdMergeEquipInventory(slotIndices[0], slotIndices[1]);
             }
-            // swap?
             else
             {
                 CmdSwapInventoryEquip(slotIndices[1], slotIndices[0]); // reversed
             }
         }
 
-        // validation
         protected override void OnValidate()
         {
             base.OnValidate();
 
-            // it's easy to set a default item and forget to set amount from 0 to 1
-            // -> let's do this automatically.
             for (int i = 0; i < slotInfo.Length; ++i)
                 if (slotInfo[i].defaultItem.item != null && slotInfo[i].defaultItem.amount == 0)
                     slotInfo[i].defaultItem.amount = 1;

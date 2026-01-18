@@ -21,6 +21,8 @@ public class PlayerMeshSwitcherEditor : Editor
 
     public override void OnInspectorGUI()
     {
+        if (target == null)
+            return;
         DrawDefaultInspector();
 
         PlayerMeshSwitcher switcher = (PlayerMeshSwitcher)target;
@@ -180,6 +182,11 @@ public class PlayerMeshSwitcherEditor : Editor
         }
 
         EditorUtility.SetDirty(target);
+    }
+    void OnDisable()
+    {
+        originalMaterials.Clear();
+        targetEquipmentItem = null;
     }
 
     void WriteMeshIndexToItem()

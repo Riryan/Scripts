@@ -17,17 +17,11 @@ namespace uMMORPG
         public Health health;
         public Mana mana;
 
-        // 'skillTemplates' are the available skills (first one is default attack)
-        // 'skills' are the loaded skills with cooldowns etc.
         [Header("Skills & Buffs")]
         public ScriptableSkill[] skillTemplates;
         public readonly SyncList<Skill> skills = new SyncList<Skill>();
         public readonly SyncList<Buff> buffs = new SyncList<Buff>(); // active buffs
 
-        // effect mount is where the arrows/fireballs/etc. are spawned
-        // -> can be overwritten, e.g. for mages to set it to the weapon's effect
-        //    mount
-        // -> assign to right hand if in doubt!
     #pragma warning disable CS0649 // Field is never assigned to
         [SerializeField] Transform _effectMount;
     #pragma warning restore CS0649 // Field is never assigned to
@@ -41,13 +35,10 @@ namespace uMMORPG
         public UnityEventSkill onSkillCastStarted;
         public UnityEventSkill onSkillCastFinished;
 
-        // current skill (synced because we need it as an animation parameter)
         [SyncVar, HideInInspector] public int currentSkill = -1;
 
-        // boni ////////////////////////////////////////////////////////////////////
         public int GetHealthBonus(int baseHealth)
         {
-            // sum up manually. Linq.Sum() is HEAVY(!) on GC and performance (190 KB/call!)
             int passiveBonus = 0;
             foreach (Skill skill in skills)
                 if (skill.level > 0 && skill.data is PassiveSkill passiveSkill)
@@ -62,7 +53,6 @@ namespace uMMORPG
 
         public int GetHealthRecoveryBonus()
         {
-            // sum up manually. Linq.Sum() is HEAVY(!) on GC and performance (190 KB/call!)
             float passivePercent = 0;
             foreach (Skill skill in skills)
                 if (skill.level > 0 && skill.data is PassiveSkill passiveSkill)
@@ -77,7 +67,6 @@ namespace uMMORPG
 
         public int GetManaBonus(int baseMana)
         {
-            // sum up manually. Linq.Sum() is HEAVY(!) on GC and performance (190 KB/call!)
             int passiveBonus = 0;
             foreach (Skill skill in skills)
                 if (skill.level > 0 && skill.data is PassiveSkill passiveSkill)
@@ -292,7 +281,6 @@ namespace uMMORPG
             // validate: still alive?
             if (health.current > 0)
             {
-                // call scriptableskill event
                 skill.data.OnCastStarted(entity);
 
                 // call event
@@ -308,7 +296,6 @@ namespace uMMORPG
             // validate: still alive?
             if (health.current > 0)
             {
-                // call scriptableskill event
                 skill.data.OnCastFinished(entity);
 
                 // call event

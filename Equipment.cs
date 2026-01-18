@@ -5,11 +5,8 @@ namespace uMMORPG
     [DisallowMultipleComponent]
     public abstract class Equipment : ItemContainer, IHealthBonus, IManaBonus, ICombatBonus
     {
-        // boni ////////////////////////////////////////////////////////////////////
         public int GetHealthBonus(int baseHealth)
         {
-            // calculate equipment bonus
-            // sum up manually. Linq.Sum() is HEAVY(!) on GC and performance (190 KB/call!)
             int bonus = 0;
             foreach (ItemSlot slot in slots)
                 if (slot.amount > 0 && slot.item.CheckDurability())
@@ -21,8 +18,6 @@ namespace uMMORPG
 
         public int GetManaBonus(int baseMana)
         {
-            // calculate equipment bonus
-            // sum up manually. Linq.Sum() is HEAVY(!) on GC and performance (190 KB/call!)
             int bonus = 0;
             foreach (ItemSlot slot in slots)
                 if (slot.amount > 0 && slot.item.CheckDurability())
@@ -34,8 +29,6 @@ namespace uMMORPG
 
         public int GetDamageBonus()
         {
-            // calculate equipment bonus
-            // sum up manually. Linq.Sum() is HEAVY(!) on GC and performance (190 KB/call!)
             int bonus = 0;
             foreach (ItemSlot slot in slots)
                 if (slot.amount > 0 && slot.item.CheckDurability())
@@ -45,8 +38,6 @@ namespace uMMORPG
 
         public int GetDefenseBonus()
         {
-            // calculate equipment bonus
-            // sum up manually. Linq.Sum() is HEAVY(!) on GC and performance (190 KB/call!)
             int bonus = 0;
             foreach (ItemSlot slot in slots)
                 if (slot.amount > 0 && slot.item.CheckDurability())
@@ -56,8 +47,6 @@ namespace uMMORPG
 
         public float GetCriticalChanceBonus()
         {
-            // calculate equipment bonus
-            // sum up manually. Linq.Sum() is HEAVY(!) on GC and performance (190 KB/call!)
             float bonus = 0;
             foreach (ItemSlot slot in slots)
                 if (slot.amount > 0 && slot.item.CheckDurability())
@@ -67,8 +56,6 @@ namespace uMMORPG
 
         public float GetBlockChanceBonus()
         {
-            // calculate equipment bonus
-            // sum up manually. Linq.Sum() is HEAVY(!) on GC and performance (190 KB/call!)
             float bonus = 0;
             foreach (ItemSlot slot in slots)
                 if (slot.amount > 0 && slot.item.CheckDurability())
@@ -76,12 +63,8 @@ namespace uMMORPG
             return bonus;
         }
 
-        ////////////////////////////////////////////////////////////////////////////
-        // helper function to find the equipped weapon index
-        // -> works for all entity types. returns -1 if no weapon equipped.
         public int GetEquippedWeaponIndex()
         {
-            // (avoid FindIndex to minimize allocations)
             for (int i = 0; i < slots.Count; ++i)
             {
                 ItemSlot slot = slots[i];
@@ -91,11 +74,8 @@ namespace uMMORPG
             return -1;
         }
 
-        // get currently equipped weapon category to check if skills can be casted
-        // with this weapon. returns "" if none.
         public string GetEquippedWeaponCategory()
         {
-            // find the weapon slot
             int index = GetEquippedWeaponIndex();
             return index != -1 ? ((WeaponItem)slots[index].item.data).category : "";
         }

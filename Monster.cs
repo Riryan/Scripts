@@ -513,6 +513,7 @@ namespace uMMORPG
                 if (target)
                     movement.LookAtY(target.transform.position);
             }
+            UpdateFootsteps();
         }
 
         // DrawGizmos can be used for debug info

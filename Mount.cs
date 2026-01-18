@@ -140,6 +140,7 @@ namespace uMMORPG
                 // copy owner's position and rotation. no need for NetworkTransform.
                 CopyOwnerPositionAndRotation();
             }
+            UpdateFootsteps();
         }
 
         // death ///////////////////////////////////////////////////////////////////

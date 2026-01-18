@@ -52,17 +52,25 @@ namespace uMMORPG
 
         // skillbar ////////////////////////////////////////////////////////////////
         //[Client] <- disabled while UNET OnDestroy isLocalPlayer bug exists
-        void Save()
-        {
+        //void Save()
+        //{
             // save skillbar to player prefs (based on player name, so that
             // each character can have a different skillbar)
-            for (int i = 0; i < slots.Length; ++i)
-                PlayerPrefs.SetString(name + "_skillbar_" + i, slots[i].reference);
+        //    for (int i = 0; i < slots.Length; ++i)
+        //        PlayerPrefs.SetString(name + "_skillbar_" + i, slots[i].reference);
 
             // force saving playerprefs, otherwise they aren't saved for some reason
+        //    PlayerPrefs.Save();
+        //}
+        void Save()
+        {
+            // slot 0 is dynamic (weapon skill) and must NOT be saved
+            for (int i = 1; i < slots.Length; ++i)
+                PlayerPrefs.SetString(name + "_skillbar_" + i, slots[i].reference);
+
             PlayerPrefs.Save();
         }
-
+/*
         [Client]
         void Load()
         {
@@ -92,7 +100,32 @@ namespace uMMORPG
                     slots[i].reference = learned[i].name;
                 }
             }
+        }*/
+[Client]
+void Load()
+{
+    List<Skill> learned = skills.skills.Where(skill => skill.level > 0).ToList();
+
+    // slot 0 intentionally skipped (weapon skill)
+    for (int i = 1; i < slots.Length; ++i)
+    {
+        if (PlayerPrefs.HasKey(name + "_skillbar_" + i))
+        {
+            string entry = PlayerPrefs.GetString(name + "_skillbar_" + i, "");
+
+            if (skills.HasLearned(entry) ||
+                inventory.GetItemIndexByName(entry) != -1 ||
+                equipment.GetItemIndexByName(entry) != -1)
+            {
+                slots[i].reference = entry;
+            }
         }
+        else if (i - 1 < learned.Count)
+        {
+            slots[i].reference = learned[i - 1].name;
+        }
+    }
+}
 
         // drag & drop /////////////////////////////////////////////////////////////
         void OnDragAndDrop_InventorySlot_SkillbarSlot(int[] slotIndices)

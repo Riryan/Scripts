@@ -7,35 +7,66 @@ namespace uMMORPG
     [CustomEditor(typeof(PlayerEquipment))]
     public class PlayerEquipmentEditor : Editor
     {
-        SerializedProperty slotInfoProp;
         bool showCustomizationSlots = false;
+
+        SerializedProperty SlotInfoProp =>
+            serializedObject != null
+                ? serializedObject.FindProperty("slotInfo")
+                : null;
 
         void OnEnable()
         {
-            slotInfoProp = serializedObject.FindProperty("slotInfo");
+            // Domain reload safe
+            if (target == null)
+                return;
+        }
+
+        void OnDisable()
+        {
+            // Never hold editor state across reloads
         }
 
         public override void OnInspectorGUI()
         {
+            if (target == null || serializedObject == null)
+                return;
+
             serializedObject.Update();
 
-            // Draw everything except slotInfo normally
+            SerializedProperty slotInfoProp = SlotInfoProp;
+            if (slotInfoProp == null || !slotInfoProp.isArray)
+            {
+                serializedObject.ApplyModifiedProperties();
+                return;
+            }
+
+            // Draw all fields except slotInfo
             DrawPropertiesExcluding(serializedObject, "slotInfo");
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Equipment Slots", EditorStyles.boldLabel);
 
-            showCustomizationSlots =
-                EditorGUILayout.ToggleLeft("Show Customization Slots (__Customization__)", showCustomizationSlots);
+            showCustomizationSlots = EditorGUILayout.ToggleLeft(
+                "Show Customization Slots (__Customization__)",
+                showCustomizationSlots
+            );
 
             EditorGUILayout.Space();
 
             for (int i = 0; i < slotInfoProp.arraySize; i++)
             {
-                SerializedProperty element = slotInfoProp.GetArrayElementAtIndex(i);
-                SerializedProperty categoryProp = element.FindPropertyRelative("requiredCategory");
+                SerializedProperty element =
+                    slotInfoProp.GetArrayElementAtIndex(i);
 
-                string category = categoryProp.stringValue;
+                if (element == null)
+                    continue;
+
+                SerializedProperty categoryProp =
+                    element.FindPropertyRelative("requiredCategory");
+
+                string category = categoryProp != null
+                    ? categoryProp.stringValue
+                    : string.Empty;
 
                 bool isCustomization =
                     !string.IsNullOrEmpty(category) &&

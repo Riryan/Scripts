@@ -170,7 +170,7 @@ namespace uMMORPG
             DamageType damageType)
         {
             // Visual feedback is local-only
-            ShowDamagePopup(amount, damageType);
+            //ShowDamagePopup(amount, damageType);
 
             // UI / addons hook
             onClientReceivedDamage.Invoke(amount, damageType);

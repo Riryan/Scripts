@@ -1,3 +1,4 @@
+/*
 using UnityEngine;
 
 namespace uMMORPG
@@ -10,5 +11,8 @@ namespace uMMORPG
         [Header("GFF Weapon Type")]
         public WeaponType weaponType;
         public HandsUsed handsUsed;
+        [Header("Combat Skill")]
+        [Tooltip("Skill used for basic auto-attack when this weapon is equipped")]
+        public ScriptableSkill attackSkill;
     }
-}
+}*/

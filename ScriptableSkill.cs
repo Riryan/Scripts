@@ -27,7 +27,7 @@ namespace uMMORPG
     public abstract partial class ScriptableSkill : ScriptableObject
     {
         [Header("Info")]
-        public bool followupDefaultAttack;
+        public bool loopAttack;
         [SerializeField, TextArea(1, 30)] protected string toolTip; // not public, use ToolTip()
         public Sprite image;
         public bool learnDefault; // normal attack etc.
@@ -56,24 +56,37 @@ namespace uMMORPG
         // some skills requires certain weapons.
         // -> check the weapon type
         // -> check durability if the weapon is a durability item
-        bool CheckWeapon(Entity caster)
-        {
-            // requires no weapon category?
-            if (string.IsNullOrWhiteSpace(requiredWeaponCategory))
-                return true;
+public bool CheckWeapon(Entity caster)
+{
+    // no weapon requirement at all
+    if (string.IsNullOrWhiteSpace(requiredWeaponCategory))
+        return true;
 
-            // otherwise check category
-            if (caster.equipment.GetEquippedWeaponCategory().StartsWith(requiredWeaponCategory))
-            {
-                // and check durability
-                int weaponIndex = caster.equipment.GetEquippedWeaponIndex();
-                if (weaponIndex != -1)
-                {
-                    return caster.equipment.slots[weaponIndex].item.CheckDurability();
-                }
-            }
-            return false;
-        }
+    // try equipped weapon first (existing behavior)
+    int weaponIndex = caster.equipment.GetEquippedWeaponIndex();
+    if (weaponIndex != -1)
+    {
+        if (caster.equipment.GetEquippedWeaponCategory() == requiredWeaponCategory)
+            return true;
+
+        return false;
+    }
+
+    // --- NEW: unarmed fallback ---
+    if (caster is Player player && player.unarmedWeapon != null)
+    {
+        // if unarmed weapon has no category, allow generic skills
+        if (string.IsNullOrWhiteSpace(player.unarmedWeapon.category))
+            return true;
+
+        // category match
+        if (player.unarmedWeapon.category == requiredWeaponCategory)
+            return true;
+    }
+
+    return false;
+}
+
 
         // 1. self check: alive, enough mana, cooldown ready etc.?
         // (most skills can only be cast while alive. some maybe while dead or only

@@ -33,7 +33,11 @@ namespace uMMORPG
 
         // finite state machine states /////////////////////////////////////////////
         [Server] protected override string UpdateServer() { return state; }
-        [Client] protected override void UpdateClient() {}
+        [Client]
+        protected override void UpdateClient()
+        {
+            UpdateFootsteps();
+        }
 
         // attack //////////////////////////////////////////////////////////////////
         public override bool CanAttack(Entity entity) { return false; }

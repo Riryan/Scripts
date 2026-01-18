@@ -1,4 +1,5 @@
-﻿using System;
+﻿/*
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Controller2k;
@@ -885,8 +886,34 @@ namespace uMMORPG
 
                         if (p.useSkillWhenCloser != -1)
                         {
-                            Skill skill = p.skills.skills[p.useSkillWhenCloser];
-                            float requiredRange = skill.castRange * p.attackToMoveRangeRatio;
+                            
+bool hasRangeSkill = false;
+Skill rangeSkill = default;
+
+// Prefer current basic attack (weapon / unarmed)
+ScriptableSkill basicAttack = p.GetBasicAttackSkill();
+if (basicAttack != null)
+{
+    int idx = p.skills.GetSkillIndexByName(basicAttack.name);
+    if (idx != -1)
+    {
+        rangeSkill = p.skills.skills[idx];
+        hasRangeSkill = true;
+    }
+}
+
+// Fallback to legacy behavior
+if (!hasRangeSkill && p.useSkillWhenCloser != -1)
+{
+    rangeSkill = p.skills.skills[p.useSkillWhenCloser];
+    hasRangeSkill = true;
+}
+
+if (!hasRangeSkill)
+    return;
+
+float requiredRange = rangeSkill.castRange * p.attackToMoveRangeRatio;
+
 
                             if (toTarget.magnitude <= requiredRange)
                                 reached = true;
@@ -923,6 +950,11 @@ Debug.DrawLine(transform.position, transform.position + desiredDir, Color.cyan);
                         // stop ONLY on directional movement
                         if (inputDir == Vector2.zero && p.state != "CASTING")
                         {
+                            // ===== EARLY-OUT GUARD =====
+                            // still casting or not ready -> do nothing this tick
+                            if (p.state == "CASTING")
+                                return;
+                            // ==========================
                             Skill skill = p.skills.skills[p.defaultAttackSkill];
                             float distance = Vector3.Distance(transform.position, p.target.transform.position);
                             if (distance <= skill.castRange)
@@ -1446,4 +1478,4 @@ Debug.DrawLine(transform.position, transform.position + desiredDir, Color.cyan);
             camera.transform.SetParent(transform, false);
         }
     }
-}
+}*/

@@ -2,7 +2,7 @@
 
 namespace uMMORPG
 {
-    [CreateAssetMenu(menuName="uMMORPG Skill/Target Damage", order=999)]
+    [CreateAssetMenu(menuName="uMMORPG/Skill/Target Damage", order=999)]
     public class TargetDamageSkill : DamageSkill
     {
         public override bool CheckTarget(Entity caster)
